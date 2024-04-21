@@ -32,7 +32,6 @@ class Player {
     this._x = newX;
     this._y = newY;
     this._draw(); // Draw the player at the new position
-    console.log(this._x + "," + this._y);
   }
 
   act() {
