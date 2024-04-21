@@ -113,13 +113,24 @@ function App() {
   }, []);
 
   const renderMap = () => {
-    const mapWidth = 50;
-    const mapHeight = 50;
+    const mapWidth = 20;
+    const mapHeight = 20;
     const mapGrid = [];
 
-    for (let y = 0; y < mapHeight; y++) {
+    const startX = Math.max(
+      0,
+      Math.min(50 - mapWidth, player._x - Math.floor(mapWidth / 2))
+    );
+    const startY = Math.max(
+      0,
+      Math.min(50 - mapHeight, player._y - Math.floor(mapHeight / 2))
+    );
+    const endX = Math.min(50, startX + mapWidth);
+    const endY = Math.min(50, startY + mapHeight);
+
+    for (let y = startY; y < endY; y++) {
       const row = [];
-      for (let x = 0; x < mapWidth; x++) {
+      for (let x = startX; x < endX; x++) {
         const key = x + "," + y;
         row.push(
           <div key={key} className="map-cell">
@@ -137,7 +148,11 @@ function App() {
     return <div className="map">{mapGrid}</div>;
   };
 
-  return <div className="App">{renderMap()}</div>;
+  return (
+    <div className="App">
+      <div className="UI">{renderMap()}</div>
+    </div>
+  );
 }
 
 initializeGame();
