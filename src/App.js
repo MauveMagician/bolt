@@ -9,12 +9,23 @@ let engine = null;
 let scheduler = null;
 
 class Player {
-  constructor(x, y, emoji = "🐶", maxLives = 3) {
+  constructor(x, y, emoji = "🐶", maxLives = 3, name = "Bolt") {
     this._x = x;
     this._y = y;
     this._emoji = emoji;
+    this.lives = maxLives;
     this.maxLives = maxLives;
+    this.score = 0;
+    this.name = name;
     this._draw();
+  }
+
+  get x() {
+    return this._x;
+  }
+
+  get y() {
+    return this._y;
   }
 
   _draw() {
@@ -82,6 +93,48 @@ function generateBoxes() {
   }
 }
 
+class Enemy {
+  constructor(x, y, emoji = "👺", maxLives = 1, name = "goblin") {
+    this._x = x;
+    this._y = y;
+    this._emoji = emoji;
+    this.lives = maxLives;
+    this.maxLives = maxLives;
+    this.score = 0;
+    this.name = name;
+    this._draw();
+  }
+  _draw() {
+    generatedMap[this._x + "," + this._y] = this._emoji;
+  }
+  act() {
+    var x = player.x;
+    var y = player.y;
+    var passableCallback = function (x, y) {
+      return x + "," + y in generatedMap;
+    };
+    var astar = new ROT.Path.AStar(x, y, passableCallback, { topology: 4 });
+
+    var path = [];
+    var pathCallback = function (x, y) {
+      path.push([x, y]);
+    };
+    astar.compute(this._x, this._y, pathCallback);
+    path.shift();
+    if (path.length == 1) {
+      engine.lock();
+      alert("Game over - you were captured by Pedro!");
+    } else {
+      generatedMap[this._x + "," + this._y] = "⬛️";
+      x = path[0][0];
+      y = path[0][1];
+      this._x = x;
+      this._y = y;
+      this._draw();
+    }
+  }
+}
+
 function initializeGame() {
   const map = new ROT.Map.Digger(50, 50).create((x, y, value) => {
     const key = x + "," + y;
@@ -92,11 +145,31 @@ function initializeGame() {
   });
   createPlayer();
   generateBoxes();
+  const enemies = createBeing(Enemy);
   scheduler = new ROT.Scheduler.Simple();
   scheduler.add(player, true);
+  enemies.forEach((element) => {
+    scheduler.add(element, true);
+  });
   engine = new ROT.Engine(scheduler);
   engine.start();
+  console.log(player.x + " " + player.y);
 }
+
+function createBeing(what) {
+  const beings = [];
+  for (var i = 0; i < 10; i++) {
+    var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
+    var key = freeCells.splice(index, 1)[0];
+    var parts = key.split(",");
+    var x = parseInt(parts[0]);
+    var y = parseInt(parts[1]);
+    beings.push(new what(x, y));
+  }
+  return beings;
+}
+
+//LOGIC ENDS HERE. DRAWING STARTS HERE
 
 function App() {
   const [dungeon, setDungeon] = useState({}); // Initialize dungeon state
@@ -149,17 +222,100 @@ function App() {
     return <div className="map">{mapGrid}</div>;
   };
 
+  const renderLivesContainer = () => {
+    if (player.lives > 99) {
+      return (
+        <div className="livesContainer">
+          <div style={{ verticalAlign: "middle" }}>
+            <div
+              style={{
+                animation:
+                  player.lives === 1
+                    ? "final-heartbeat 0.60s infinite"
+                    : "heartbeat 1s infinite",
+                display: "inline-block",
+              }}
+            >
+              <span style={{ verticalAlign: "middle" }}>❤️</span>
+            </div>{" "}
+            x {player.lives}
+          </div>
+        </div>
+      );
+    } else if (player.maxLives > 8) {
+      return (
+        <div className="livesContainer">
+          <div style={{ verticalAlign: "middle" }}>
+            <div
+              style={{
+                animation:
+                  player.lives === 1
+                    ? "final-heartbeat 0.60s infinite"
+                    : "heartbeat 1s infinite",
+                display: "inline-block",
+              }}
+            >
+              <span style={{ verticalAlign: "middle" }}>❤️</span>
+            </div>{" "}
+            x {player.lives}/{player.maxLives}
+          </div>
+        </div>
+      );
+    }
+
+    let heartSize = 36; // Default heart size
+    if (player.lives > 4) {
+      heartSize = 18; // Halve the size of the hearts if there are between 5 and 8
+    }
+
+    const hearts = Array.from({ length: player.maxLives }, (_, index) => (
+      <span
+        key={index}
+        style={{
+          fontSize: index < player.lives ? "22px" : "18px",
+          verticalAlign: "middle",
+          animation:
+            index === 0 && player.lives === 1
+              ? "final-heartbeat 0.60s infinite"
+              : index < player.lives
+              ? "heartbeat 1s infinite"
+              : "none",
+          display: "inline-block",
+        }}
+      >
+        {index < player.lives ? "❤️" : "🖤"}
+      </span>
+    ));
+
+    return (
+      <div className="livesContainer">
+        <div style={{ display: "inline-block", verticalAlign: "middle" }}>
+          {hearts}
+        </div>
+      </div>
+    );
+  };
+
+  const renderScoreKeep = () => {
+    return <div className="scoreKeep">Score: {player.score}</div>;
+  };
+
   return (
     <div className="App">
       <div className="ui">
         {renderMap()}
         <div className="inventory"></div>
-        <div className="bottomUi"></div>
+        <div className="bottomUi">
+          {renderLivesContainer()}
+          {renderScoreKeep()}
+          <div className="log"></div>
+        </div>
       </div>
     </div>
   );
 }
 
+//STARTING GAME
 initializeGame();
 gameLoop();
 export default App;

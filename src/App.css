@@ -28,6 +28,7 @@
   height: var(--square-size, 20px);
   display: inline-block;
   font-size: 20px; /* Adjust the font size as needed */
+  font-family: monospace;
 }
 
 .inventory {
@@ -42,4 +43,71 @@
   background-color: #666;
   height: auto;
   width: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+}
+
+.livesContainer {
+  grid-column: 1;
+  grid-row: 1;
+  background-color: #777;
+  height: auto;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-family: "Jersey 10", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  color: white;
+  font-size: 32px;
+  padding: 2.5px;
+  padding-left: 10px;
+}
+
+.scoreKeep {
+  grid-column: 2 / span 2;
+  grid-row: 1;
+  background-color: #888;
+  height: auto;
+  width: auto;
+  font-family: "Jersey 10", sans-serif;
+  font-weight: 500;
+  font-style: normal;
+  color: white;
+}
+
+.log {
+  grid-column: 1 / span 3;
+  grid-row: 2 / span 2;
+  background-color: #999;
+  height: auto;
+  width: auto;
+  overflow-y: scroll;
+}
+
+@keyframes final-heartbeat {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes heartbeat {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
