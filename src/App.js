@@ -7,9 +7,14 @@ let freeCells = [];
 let player = null;
 let engine = null;
 let scheduler = null;
+let enemies = [];
+
+function d6() {
+  return Math.floor(Math.random() * 6) + 1;
+}
 
 class Player {
-  constructor(x, y, emoji = "🐶", maxLives = 3, name = "Bolt") {
+  constructor(x, y, emoji = "🐶", maxLives = 3, name = "Bolt", toHit = 3) {
     this._x = x;
     this._y = y;
     this._emoji = emoji;
@@ -17,6 +22,7 @@ class Player {
     this.maxLives = maxLives;
     this.score = 0;
     this.name = name;
+    this.toHit = toHit;
     this._draw();
   }
 
@@ -32,47 +38,69 @@ class Player {
     generatedMap[this._x + "," + this._y] = this._emoji;
   }
 
-  move(dx, dy) {
-    const newX = this._x + dx;
-    const newY = this._y + dy;
+  beHit(rollValue) {
+    if (rollValue >= this.toHit) {
+      this.lives -= 1;
+      console.log("Player is hit!");
+      if (this.lives === 0) {
+        console.log("Game over - you were captured by the goblins!");
+      }
+    }
+  }
+
+  act() {
+    engine.lock();
+    /* wait for user input; do stuff when user hits a key */
+    window.addEventListener("keydown", this);
+  }
+
+  handleEvent(e) {
+    var attack = false;
+    var keyMap = {};
+    keyMap[38] = 0;
+    keyMap[33] = 1;
+    keyMap[39] = 2;
+    keyMap[34] = 3;
+    keyMap[40] = 4;
+    keyMap[35] = 5;
+    keyMap[37] = 6;
+    keyMap[36] = 7;
+
+    var code = e.keyCode;
+
+    if (!(code in keyMap)) {
+      return;
+    }
+
+    var diff = ROT.DIRS[8][keyMap[code]];
+    var newX = this._x + diff[0];
+    var newY = this._y + diff[1];
     const newKey = newX + "," + newY;
 
     if (generatedMap[newKey] === "🟫") {
       return; // Can't move into a wall
-    }
-
-    generatedMap[this._x + "," + this._y] = "⬛️"; // Clear the current position
-    this._x = newX;
-    this._y = newY;
-    this._draw(); // Draw the player at the new position
-  }
-
-  act() {
-    return new Promise((resolve) => {
-      const handleKeyDown = (event) => {
-        const keyMap = {
-          ArrowUp: { dx: 0, dy: -1 },
-          ArrowDown: { dx: 0, dy: 1 },
-          ArrowLeft: { dx: -1, dy: 0 },
-          ArrowRight: { dx: 1, dy: 0 },
-        };
-
-        const move = keyMap[event.key];
-        if (move) {
-          resolve(move);
+    } else {
+      //Check if there is an enemy and attack it
+      console.log(enemies);
+      enemies.forEach((enemy) => {
+        if (enemy.x === newX && enemy.y === newY && enemy.lives > 0) {
+          attack = true;
+          enemy.beHit(d6());
+          this.score += 100;
+          window.removeEventListener("keydown", this);
+          engine.unlock();
+          return;
         }
-      };
-
-      document.addEventListener("keydown", handleKeyDown, { once: true });
-    });
-  }
-}
-
-async function gameLoop() {
-  while (true) {
-    const move = await player.act();
-    player.move(move.dx, move.dy);
-    engine.unlock();
+      });
+    }
+    if (!attack) {
+      generatedMap[this._x + "," + this._y] = "⬛️"; // Clear the current position
+      this._x = newX;
+      this._y = newY;
+      this._draw(); // Draw the player at the new position
+      window.removeEventListener("keydown", this);
+      engine.unlock();
+    }
   }
 }
 
@@ -94,7 +122,7 @@ function generateBoxes() {
 }
 
 class Enemy {
-  constructor(x, y, emoji = "👺", maxLives = 1, name = "goblin") {
+  constructor(x, y, emoji = "👺", maxLives = 1, name = "goblin", toHit = 1) {
     this._x = x;
     this._y = y;
     this._emoji = emoji;
@@ -102,10 +130,31 @@ class Enemy {
     this.maxLives = maxLives;
     this.score = 0;
     this.name = name;
+    this.toHit = toHit;
     this._draw();
+    this.path = [];
+    enemies.push(this);
+  }
+  get x() {
+    return this._x;
+  }
+
+  get y() {
+    return this._y;
   }
   _draw() {
     generatedMap[this._x + "," + this._y] = this._emoji;
+  }
+  beHit(rollValue) {
+    if (rollValue >= this.toHit) {
+      console.log("Goblin is hit!");
+      this.lives -= 1;
+      if (this.lives === 0) {
+        generatedMap[this._x + "," + this._y] = "🦴";
+        scheduler.remove(this);
+        enemies.splice(enemies.indexOf(this), 1);
+      }
+    }
   }
   act() {
     var x = player.x;
@@ -120,16 +169,16 @@ class Enemy {
       path.push([x, y]);
     };
     astar.compute(this._x, this._y, pathCallback);
-    path.shift();
-    if (path.length == 1) {
-      engine.lock();
-      alert("Game over - you were captured by Pedro!");
+    this.path = path.slice(0); // Store the computed path for the goblin
+
+    this.path.shift();
+    if (this.path.length <= 1) {
+      player.beHit(d6());
     } else {
       generatedMap[this._x + "," + this._y] = "⬛️";
-      x = path[0][0];
-      y = path[0][1];
-      this._x = x;
-      this._y = y;
+      var nextStep = this.path[0];
+      this._x = nextStep[0];
+      this._y = nextStep[1];
       this._draw();
     }
   }
@@ -145,15 +194,14 @@ function initializeGame() {
   });
   createPlayer();
   generateBoxes();
-  const enemies = createBeing(Enemy);
+  const goblins = createBeing(Enemy);
   scheduler = new ROT.Scheduler.Simple();
   scheduler.add(player, true);
-  enemies.forEach((element) => {
+  goblins.forEach((element) => {
     scheduler.add(element, true);
   });
   engine = new ROT.Engine(scheduler);
   engine.start();
-  console.log(player.x + " " + player.y);
 }
 
 function createBeing(what) {
@@ -317,5 +365,4 @@ function App() {
 
 //STARTING GAME
 initializeGame();
-gameLoop();
 export default App;
