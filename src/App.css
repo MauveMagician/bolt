@@ -1,6 +1,22 @@
+.ui {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  grid-template-areas:
+    "a a b"
+    "a a b"
+    "c c b";
+  background-color: #444;
+  width: 690px; /* Set a fixed width */
+  height: 670px; /* Set a fixed height */
+}
+
 .map {
   background-color: #333;
-  width: fit-content;
+  grid-area: a;
+  width: auto;
+  height: auto; /* Set a fixed height for the map container */
+  padding: 10px;
 }
 
 .map-row {
@@ -12,4 +28,18 @@
   height: var(--square-size, 20px);
   display: inline-block;
   font-size: 20px; /* Adjust the font size as needed */
+}
+
+.inventory {
+  grid-area: b;
+  background-color: #555;
+  height: auto;
+  width: auto;
+}
+
+.bottomUi {
+  grid-area: c;
+  background-color: #666;
+  height: auto;
+  width: auto;
 }

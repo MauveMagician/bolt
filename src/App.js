@@ -9,14 +9,16 @@ let engine = null;
 let scheduler = null;
 
 class Player {
-  constructor(x, y) {
+  constructor(x, y, emoji = "🐶", maxLives = 3) {
     this._x = x;
     this._y = y;
+    this._emoji = emoji;
+    this.maxLives = maxLives;
     this._draw();
   }
 
   _draw() {
-    generatedMap[this._x + "," + this._y] = "🐶";
+    generatedMap[this._x + "," + this._y] = this._emoji;
   }
 
   move(dx, dy) {
@@ -69,7 +71,7 @@ function createPlayer() {
   var parts = key.split(",");
   var x = parseInt(parts[0]);
   var y = parseInt(parts[1]);
-  player = new Player(x, y);
+  player = new Player(x, y, "🐶", 3);
 }
 
 function generateBoxes() {
@@ -149,7 +151,11 @@ function App() {
 
   return (
     <div className="App">
-      <div className="UI">{renderMap()}</div>
+      <div className="ui">
+        {renderMap()}
+        <div className="inventory"></div>
+        <div className="bottomUi"></div>
+      </div>
     </div>
   );
 }
