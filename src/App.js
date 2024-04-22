@@ -41,8 +41,8 @@ class Player {
   beHit(rollValue) {
     if (rollValue >= this.toHit) {
       this.lives -= 1;
-      console.log("Player is hit!");
-      if (this.lives === 0) {
+      if (this.lives <= 0) {
+        engine.lock();
         console.log("Game over - you were captured by the goblins!");
       }
     }
@@ -81,7 +81,6 @@ class Player {
       return; // Can't move into a wall
     } else {
       //Check if there is an enemy and attack it
-      console.log(enemies);
       enemies.forEach((enemy) => {
         if (enemy.x === newX && enemy.y === newY && enemy.lives > 0) {
           attack = true;
@@ -147,7 +146,6 @@ class Enemy {
   }
   beHit(rollValue) {
     if (rollValue >= this.toHit) {
-      console.log("Goblin is hit!");
       this.lives -= 1;
       if (this.lives === 0) {
         generatedMap[this._x + "," + this._y] = "🦴";
@@ -159,27 +157,34 @@ class Enemy {
   act() {
     var x = player.x;
     var y = player.y;
-    var passableCallback = function (x, y) {
-      return x + "," + y in generatedMap;
+    var passableCallback = (x, y) => {
+      const key = x + "," + y;
+      return (
+        generatedMap[key] !== "🟫" &&
+        generatedMap[key] !== "📦" &&
+        !enemies.some(
+          (enemy) => enemy._x === x && enemy._y === y && enemy !== this
+        )
+      );
     };
     var astar = new ROT.Path.AStar(x, y, passableCallback, { topology: 4 });
-
     var path = [];
     var pathCallback = function (x, y) {
       path.push([x, y]);
     };
     astar.compute(this._x, this._y, pathCallback);
-    this.path = path.slice(0); // Store the computed path for the goblin
-
-    this.path.shift();
-    if (this.path.length <= 1) {
-      player.beHit(d6());
-    } else {
-      generatedMap[this._x + "," + this._y] = "⬛️";
-      var nextStep = this.path[0];
-      this._x = nextStep[0];
-      this._y = nextStep[1];
-      this._draw();
+    if (path.length) {
+      this.path = path.slice(0); // Store the computed path for the goblin
+      this.path.shift();
+      if (this.path.length == 1) {
+        player.beHit(d6());
+      } else {
+        generatedMap[this._x + "," + this._y] = "⬛️";
+        var nextStep = this.path[0];
+        this._x = nextStep[0];
+        this._y = nextStep[1];
+        this._draw();
+      }
     }
   }
 }
