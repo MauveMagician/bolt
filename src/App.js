@@ -43,7 +43,7 @@ class Player {
       this.lives -= 1;
       if (this.lives <= 0) {
         engine.lock();
-        console.log("Game over - you were captured by the goblins!");
+        console.log("Game over!");
       }
       document.querySelector(".App").classList.add("shake");
       setTimeout(() => {
