@@ -111,3 +111,24 @@
     transform: scale(1);
   }
 }
+
+@keyframes shake {
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-10px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(10px);
+  }
+}
+
+.shake {
+  animation: shake 0.2s;
+  filter: brightness(100%) saturate(100%) hue-rotate(320deg);
+}

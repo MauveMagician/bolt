@@ -32,9 +32,55 @@ class Player {
     generatedMap[this._x + "," + this._y] = this._emoji;
   }
 
-  move(dx, dy) {
-    const newX = this._x + dx;
-    const newY = this._y + dy;
+  beHit(rollValue) {
+    if (rollValue >= this.toHit) {
+      this.lives -= 1;
+      if (this.lives <= 0) {
+        engine.lock();
+        console.log("Game over - you were captured by the goblins!");
+      }
+      document.querySelector(".App").classList.add("shake");
+      setTimeout(() => {
+        document.querySelector(".App").classList.remove("shake");
+      }, 200);
+    }
+  }
+
+  act() {
+    engine.lock();
+    /* wait for user input; do stuff when user hits a key */
+    window.addEventListener("keydown", this);
+  }
+
+  handleEvent(e) {
+    var attack = false;
+    var keyMap = {};
+    keyMap[38] = 0;
+    keyMap[33] = 1;
+    keyMap[39] = 2;
+    keyMap[34] = 3;
+    keyMap[40] = 4;
+    keyMap[35] = 5;
+    keyMap[37] = 6;
+    keyMap[36] = 7;
+    keyMap[188] = 8;
+
+    var code = e.keyCode;
+
+    if (!(code in keyMap)) {
+      return;
+    }
+
+    if (code === 188) {
+      // If the comma key is pressed, pass the turn
+      window.removeEventListener("keydown", this);
+      engine.unlock();
+      return;
+    }
+
+    var diff = ROT.DIRS[8][keyMap[code]];
+    var newX = this._x + diff[0];
+    var newY = this._y + diff[1];
     const newKey = newX + "," + newY;
 
     if (generatedMap[newKey] === "🟫") {
