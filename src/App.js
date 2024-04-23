@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import * as ROT from "rot-js";
 import "./App.css";
 
@@ -23,6 +23,7 @@ class Player {
     this.score = 0;
     this.name = name;
     this.toHit = toHit;
+    this.ground = "⬛️";
     this._draw();
   }
 
@@ -59,6 +60,7 @@ class Player {
   }
 
   handleEvent(e) {
+    e.preventDefault();
     var attack = false;
     var keyMap = {};
     keyMap[38] = 0;
@@ -105,7 +107,8 @@ class Player {
       });
     }
     if (!attack) {
-      generatedMap[this._x + "," + this._y] = "⬛️"; // Clear the current position
+      generatedMap[this._x + "," + this._y] = this.ground; // Clear the current position
+      this.ground = generatedMap[newX + "," + newY];
       this._x = newX;
       this._y = newY;
       this._draw(); // Draw the player at the new position
@@ -144,6 +147,7 @@ class Enemy {
     this.toHit = toHit;
     this._draw();
     this.path = [];
+    this.ground = "⬛️";
     enemies.push(this);
   }
   get x() {
@@ -179,7 +183,7 @@ class Enemy {
         )
       );
     };
-    var astar = new ROT.Path.AStar(x, y, passableCallback, { topology: 4 });
+    var astar = new ROT.Path.AStar(x, y, passableCallback, { topology: 8 });
     var path = [];
     var pathCallback = function (x, y) {
       path.push([x, y]);
@@ -191,8 +195,9 @@ class Enemy {
       if (this.path.length == 1) {
         player.beHit(d6());
       } else {
-        generatedMap[this._x + "," + this._y] = "⬛️";
+        generatedMap[this._x + "," + this._y] = this.ground;
         var nextStep = this.path[0];
+        this.ground = generatedMap[nextStep[0] + "," + nextStep[1]];
         this._x = nextStep[0];
         this._y = nextStep[1];
         this._draw();
