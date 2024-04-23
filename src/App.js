@@ -72,6 +72,14 @@ class Player {
     keyMap[37] = 6;
     keyMap[36] = 7;
     keyMap[188] = 8;
+    keyMap[75] = 0;
+    keyMap[85] = 1;
+    keyMap[76] = 2;
+    keyMap[78] = 3;
+    keyMap[74] = 4;
+    keyMap[66] = 5;
+    keyMap[72] = 6;
+    keyMap[89] = 7;
 
     var code = e.keyCode;
 
@@ -370,6 +378,14 @@ function App() {
     return <div className="scoreKeep">Score: {player.score}</div>;
   };
 
+  function renderLuckContainer() {
+    return (
+      <div className="luckContainer">
+        <div>Luck:</div>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       <div className="ui">
@@ -377,6 +393,7 @@ function App() {
         <div className="inventory"></div>
         <div className="bottomUi">
           {renderLivesContainer()}
+          {renderLuckContainer()}
           {renderScoreKeep()}
           <div className="log"></div>
         </div>
