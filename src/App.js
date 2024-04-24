@@ -179,6 +179,8 @@ class Enemy {
     }
   }
   act() {
+    player.maxLives += 1;
+    player.lives += 1;
     var x = player.x;
     var y = player.y;
     var passableCallback = (x, y) => {
@@ -200,7 +202,7 @@ class Enemy {
     if (path.length) {
       this.path = path.slice(0); // Store the computed path for the goblin
       this.path.shift();
-      if (this.path.length == 1) {
+      if (this.path.length === 1) {
         player.beHit(d6());
       } else {
         generatedMap[this._x + "," + this._y] = this.ground;
@@ -301,7 +303,7 @@ function App() {
   };
 
   const renderLivesContainer = () => {
-    if (player.lives > 99) {
+    if (player.maxLives > 8) {
       return (
         <div className="livesContainer">
           <div style={{ verticalAlign: "middle" }}>
@@ -316,36 +318,11 @@ function App() {
             >
               <span style={{ verticalAlign: "middle" }}>❤️</span>
             </div>{" "}
-            x {player.lives}
-          </div>
-        </div>
-      );
-    } else if (player.maxLives > 8) {
-      return (
-        <div className="livesContainer">
-          <div style={{ verticalAlign: "middle" }}>
-            <div
-              style={{
-                animation:
-                  player.lives === 1
-                    ? "final-heartbeat 0.60s infinite"
-                    : "heartbeat 1s infinite",
-                display: "inline-block",
-              }}
-            >
-              <span style={{ verticalAlign: "middle" }}>❤️</span>
-            </div>{" "}
-            x {player.lives}/{player.maxLives}
+            {player.lives}/{player.maxLives}
           </div>
         </div>
       );
     }
-
-    let heartSize = 36; // Default heart size
-    if (player.lives > 4) {
-      heartSize = 18; // Halve the size of the hearts if there are between 5 and 8
-    }
-
     const hearts = Array.from({ length: player.maxLives }, (_, index) => (
       <span
         key={index}
