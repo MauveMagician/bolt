@@ -179,8 +179,6 @@ class Enemy {
     }
   }
   act() {
-    player.maxLives += 1;
-    player.lives += 1;
     var x = player.x;
     var y = player.y;
     var passableCallback = (x, y) => {
