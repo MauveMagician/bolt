@@ -2,12 +2,122 @@ import React, { useEffect, useState } from "react";
 import * as ROT from "rot-js";
 import "./App.css";
 
-let generatedMap = {};
-let freeCells = [];
 let player = null;
 let engine = null;
 let scheduler = null;
-let enemies = [];
+const generatedMap = {};
+const freeCells = [];
+const enemies = [];
+const eatFruit = {};
+const fruit = [
+  "🍏", // Green apple
+  "🍎", // Red apple
+  "🍐", // Pear
+  "🍊", // Tangerine
+  "🍋", // Lemon
+  "🍌", // Banana
+  "🍉", // Watermelon
+  "🍇", // Grapes
+  "🍓", // Strawberry
+  "🍈", // Melon
+  "🍒", // Cherries
+  "🍑", // Peach
+  "🥭", // Mango
+  "🍍", // Pineapple
+  "🥥", // Coconut
+  "🥝", // Kiwi fruit
+];
+const effects = [
+  healing,
+  extraHealing,
+  poison,
+  haste,
+  might,
+  confusion,
+  flying,
+  mutation,
+  slowing,
+  invunlerability,
+  weakness,
+  beasthood,
+  cancellation,
+  sleeping,
+  fire,
+  luck,
+];
+
+// Function to shuffle an array
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+// Function to initialize eatFruit dictionary
+function randomizeFruit() {
+  // Shuffle fruits and effects arrays
+  shuffleArray(fruit);
+  shuffleArray(effects);
+
+  // Initialize eatFruit dictionary
+  for (let i = 0; i < fruit.length; i++) {
+    eatFruit[fruit[i]] = effects[i];
+  }
+}
+
+function healing() {
+  console.log("Healing effect");
+}
+function extraHealing() {
+  console.log("Extra healing effect");
+}
+function poison() {
+  console.log("Poison effect");
+}
+function haste() {
+  console.log("Haste effect");
+}
+function might() {
+  console.log("Might effect");
+}
+function confusion() {
+  console.log("Confusion effect");
+}
+function flying() {
+  console.log("Flying effect");
+}
+function mutation() {
+  console.log("Mutation effect");
+}
+function slowing() {
+  console.log("Slowing effect");
+}
+function invunlerability() {
+  console.log("Invulnerability effect");
+}
+function weakness() {
+  console.log("Weakness effect");
+}
+function beasthood() {
+  console.log("Beasthood effect");
+}
+function cancellation() {
+  console.log("Cancellation effect");
+}
+function sleeping() {
+  console.log("Sleeping effect");
+}
+function fire() {
+  console.log("Fire effect");
+}
+function luck() {
+  console.log("Luck effect");
+}
+
+randomizeFruit();
+console.log(eatFruit);
 
 function d6() {
   return Math.floor(Math.random() * 6) + 1;
