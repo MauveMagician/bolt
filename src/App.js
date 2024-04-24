@@ -349,9 +349,9 @@ function App() {
     );
   };
 
-  const renderScoreKeep = () => {
+  function renderScoreKeep() {
     return <div className="scoreKeep">Score: {player.score}</div>;
-  };
+  }
 
   function renderLuckContainer() {
     return (
@@ -361,16 +361,24 @@ function App() {
     );
   }
 
+  function renderGroundView() {
+    return (
+      <div className="groundView">
+        <div>{player.ground}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       <div className="ui">
         {renderMap()}
-        <div className="inventory"></div>
+        <div className="log"></div>
         <div className="bottomUi">
           {renderLivesContainer()}
           {renderLuckContainer()}
           {renderScoreKeep()}
-          <div className="log"></div>
+          {renderGroundView()}
         </div>
       </div>
     </div>

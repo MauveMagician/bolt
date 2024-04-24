@@ -31,7 +31,7 @@
   font-family: monospace;
 }
 
-.inventory {
+.log {
   grid-area: b;
   background-color: #555;
   height: auto;
@@ -88,13 +88,21 @@
   color: white;
 }
 
-.log {
-  grid-column: 1 / span 3;
-  grid-row: 2 / span 2;
+.groundView {
+  grid-column: 1;
+  grid-row: 3;
   background-color: #999;
   height: auto;
   width: auto;
-  overflow-y: scroll;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-weight: 500;
+  font-style: normal;
+  color: white;
+  font-size: 32px;
+  padding: 2.5px;
 }
 
 @keyframes final-heartbeat {
