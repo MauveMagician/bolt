@@ -24,6 +24,8 @@ class Player {
     this.name = name;
     this.toHit = toHit;
     this.ground = "⬛️";
+    this.wield = "";
+    this.wear = "";
     this._draw();
   }
 
@@ -53,6 +55,27 @@ class Player {
     }
   }
 
+  useGround() {
+    if (this.ground === "📦") {
+      if (this.wear === "") {
+        this.ground = "⬛️";
+      } else {
+        this.ground = this.wear;
+      }
+      this.wear = "📦";
+      return true;
+    } else if (this.ground === "🦴") {
+      if (this.wield === "") {
+        this.ground = "⬛️";
+      } else {
+        this.ground = this.wield;
+      }
+      this.wield = "🦴";
+      return true;
+    }
+    return false;
+  }
+
   act() {
     engine.lock();
     /* wait for user input; do stuff when user hits a key */
@@ -63,6 +86,7 @@ class Player {
     e.preventDefault();
     var attack = false;
     var keyMap = {};
+    //Direction keys
     keyMap[38] = 0;
     keyMap[33] = 1;
     keyMap[39] = 2;
@@ -71,7 +95,6 @@ class Player {
     keyMap[35] = 5;
     keyMap[37] = 6;
     keyMap[36] = 7;
-    keyMap[188] = 8;
     keyMap[75] = 0;
     keyMap[85] = 1;
     keyMap[76] = 2;
@@ -80,6 +103,9 @@ class Player {
     keyMap[66] = 5;
     keyMap[72] = 6;
     keyMap[89] = 7;
+    //Action keys
+    keyMap[188] = 8;
+    keyMap[81] = 8;
 
     var code = e.keyCode;
 
@@ -87,6 +113,14 @@ class Player {
       return;
     }
 
+    if (code === 81) {
+      if (player.useGround()) {
+        window.removeEventListener("keydown", this);
+        engine.unlock();
+        return;
+      }
+      return;
+    }
     if (code === 188) {
       // If the comma key is pressed, pass the turn
       window.removeEventListener("keydown", this);
@@ -369,6 +403,15 @@ function App() {
     );
   }
 
+  function renderEquipView() {
+    return (
+      <div className="equipView">
+        <div>{player.wield}</div>
+        <div>{player.wear}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       <div className="ui">
@@ -378,6 +421,7 @@ function App() {
           {renderLivesContainer()}
           {renderLuckContainer()}
           {renderScoreKeep()}
+          {renderEquipView()}
           {renderGroundView()}
         </div>
       </div>

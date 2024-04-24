@@ -88,6 +88,22 @@
   color: white;
 }
 
+.equipView {
+  grid-column: 1;
+  grid-row: 2;
+  background-color: #bbb;
+  height: auto;
+  width: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 500;
+  font-style: normal;
+  color: white;
+  font-size: 32px;
+  padding: 2.5px;
+}
+
 .groundView {
   grid-column: 1;
   grid-row: 3;
