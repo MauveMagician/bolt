@@ -25,7 +25,7 @@ const fruit = [
   "🥭", // Mango
   "🍍", // Pineapple
   "🥥", // Coconut
-  "🥝", // Kiwi fruit
+  "🥑", // Avocado
 ];
 const effects = [
   healing,
@@ -116,15 +116,26 @@ function luck() {
   console.log("Luck effect");
 }
 
-randomizeFruit();
-console.log(eatFruit);
+function eat(eater, fruit) {
+  if (eatFruit[fruit]) {
+    eatFruit[fruit]();
+  }
+}
 
 function d6() {
   return Math.floor(Math.random() * 6) + 1;
 }
 
 class Player {
-  constructor(x, y, emoji = "🐶", maxLives = 3, name = "Bolt", toHit = 3) {
+  constructor(
+    x,
+    y,
+    emoji = "🐶",
+    maxLives = 3,
+    name = "Bolt",
+    toHit = 3,
+    inventory = []
+  ) {
     this._x = x;
     this._y = y;
     this._emoji = emoji;
@@ -136,6 +147,7 @@ class Player {
     this.ground = "⬛️";
     this.wield = "";
     this.wear = "";
+    this.inventory = inventory;
     this._draw();
   }
 
@@ -166,6 +178,11 @@ class Player {
   }
 
   useGround() {
+    if (fruit.includes(this.ground)) {
+      this.inventory.push(this.ground);
+      this.ground = "⬛️";
+      return true;
+    }
     if (this.ground === "📦") {
       if (this.wear === "") {
         this.ground = "⬛️";
@@ -216,6 +233,10 @@ class Player {
     //Action keys
     keyMap[188] = 8;
     keyMap[81] = 8;
+    keyMap[65] = 8;
+    keyMap[83] = 8;
+    keyMap[68] = 8;
+    keyMap[70] = 8;
 
     var code = e.keyCode;
 
@@ -235,6 +256,46 @@ class Player {
       // If the comma key is pressed, pass the turn
       window.removeEventListener("keydown", this);
       engine.unlock();
+      return;
+    }
+    if (code === 65) {
+      if (player.inventory.length > 0) {
+        eat(player, player.inventory[0]);
+        player.inventory.splice(0, 1);
+        window.removeEventListener("keydown", this);
+        engine.unlock();
+        return;
+      }
+      return;
+    }
+    if (code === 83) {
+      if (player.inventory.length > 1) {
+        eat(player, player.inventory[1]);
+        player.inventory.splice(1, 1);
+        window.removeEventListener("keydown", this);
+        engine.unlock();
+        return;
+      }
+      return;
+    }
+    if (code === 68) {
+      if (player.inventory.length > 2) {
+        eat(player, player.inventory[2]);
+        player.inventory.splice(2, 1);
+        window.removeEventListener("keydown", this);
+        engine.unlock();
+        return;
+      }
+      return;
+    }
+    if (code === 70) {
+      if (player.inventory.length > 3) {
+        eat(player, player.inventory[3]);
+        player.inventory.splice(3, 1);
+        window.removeEventListener("keydown", this);
+        engine.unlock();
+        return;
+      }
       return;
     }
 
@@ -283,7 +344,8 @@ function generateBoxes() {
   for (var i = 0; i < 10; i++) {
     var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
     var key = freeCells[index];
-    generatedMap[key] = "📦";
+    var randomFruitIndex = Math.floor(Math.random() * fruit.length);
+    generatedMap[key] = fruit[randomFruitIndex];
   }
 }
 
@@ -366,6 +428,7 @@ function initializeGame() {
       freeCells.push(key);
     }
   });
+  randomizeFruit();
   createPlayer();
   generateBoxes();
   const goblins = createBeing(Enemy);
@@ -429,7 +492,7 @@ function App() {
       for (let x = startX; x < endX; x++) {
         const key = x + "," + y;
         row.push(
-          <div key={key} className="map-cell">
+          <div key={key} className="map-square">
             {dungeon[key]}
           </div>
         );
@@ -522,6 +585,39 @@ function App() {
     );
   }
 
+  function renderInventoryView() {
+    return (
+      <div className="inventoryGrid">
+        <div className="inventoryView">
+          {player.inventory[0] && (
+            <div>
+              {player.inventory[0]}
+              <div>A</div>
+            </div>
+          )}
+          {player.inventory[1] && (
+            <div>
+              {player.inventory[1]}
+              <div>S</div>
+            </div>
+          )}
+          {player.inventory[2] && (
+            <div>
+              {player.inventory[2]}
+              <div>D</div>
+            </div>
+          )}
+          {player.inventory[3] && (
+            <div>
+              {player.inventory[3]}
+              <div>F</div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       <div className="ui">
@@ -532,6 +628,7 @@ function App() {
           {renderLuckContainer()}
           {renderScoreKeep()}
           {renderEquipView()}
+          {renderInventoryView()}
           {renderGroundView()}
         </div>
       </div>
@@ -541,4 +638,5 @@ function App() {
 
 //STARTING GAME
 initializeGame();
+console.log(eatFruit);
 export default App;
