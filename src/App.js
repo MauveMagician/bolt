@@ -45,6 +45,19 @@ const effects = [
   fire,
   luck,
 ];
+const weapons = [
+  "🗡️", // Dagger
+  "⚔️", // Double Sword
+  "🔫", // Gun
+  "🏹", // Bow and Arrow
+  "🪓", // Axe
+  "🔨", // Hammer
+  "⛏️", // Pick
+  "🎸", // Guitar
+  "🔪", // Kitchen Knife
+  "🛡️", // Shield
+  "🧤", // Gloves
+];
 
 // Function to shuffle an array
 function shuffleArray(array) {
@@ -134,7 +147,8 @@ class Player {
     maxLives = 3,
     name = "Bolt",
     toHit = 3,
-    inventory = []
+    inventory = [],
+    passives = []
   ) {
     this._x = x;
     this._y = y;
@@ -148,6 +162,7 @@ class Player {
     this.wield = "";
     this.wear = "";
     this.inventory = inventory;
+    this.passives = passives;
     this._draw();
   }
 
@@ -188,19 +203,53 @@ class Player {
         this.ground = "⬛️";
       } else {
         this.ground = this.wear;
+        this.unequip("📦");
       }
       this.wear = "📦";
       return true;
-    } else if (this.ground === "🦴") {
+    } else if (weapons.includes(this.ground)) {
+      var weapon = this.ground;
       if (this.wield === "") {
         this.ground = "⬛️";
       } else {
         this.ground = this.wield;
+        this.unwield();
       }
-      this.wield = "🦴";
+      this.wieldWeapon(weapon);
       return true;
     }
     return false;
+  }
+
+  wieldWeapon(item) {
+    // Logic to equip the item
+    // Example: When equipping a dagger, add the "PlusOne" passive ability
+    console.log("Wielding " + item);
+    if (item === "🗡️") {
+      this.wield = "🗡️";
+      this.passives.push("PlusOne");
+    }
+    if (item === "⚔️") {
+      this.wield = "⚔️";
+      this.passives.push("TwoWeapon");
+    }
+  }
+
+  unwield() {
+    // Logic to unequip the item
+    // Example: When unequipping a dagger, remove the "PlusOne" passive ability
+    if (this.wield === "🗡️") {
+      const index = this.passives.indexOf("PlusOne");
+      if (index !== -1) {
+        this.passives.splice(index, 1);
+      }
+    }
+    if (this.wield === "⚔️") {
+      const index = this.passives.indexOf("TwoWeapon");
+      if (index !== -1) {
+        this.passives.splice(index, 1);
+      }
+    }
   }
 
   act() {
@@ -311,8 +360,7 @@ class Player {
       enemies.forEach((enemy) => {
         if (enemy.x === newX && enemy.y === newY && enemy.lives > 0) {
           attack = true;
-          enemy.beHit(d6());
-          this.score += 100;
+          player.attack(enemy);
           window.removeEventListener("keydown", this);
           engine.unlock();
           return;
@@ -327,6 +375,28 @@ class Player {
       this._draw(); // Draw the player at the new position
       window.removeEventListener("keydown", this);
       engine.unlock();
+    }
+  }
+
+  attack(enemy) {
+    if (this.passives.includes("PlusOne")) {
+      console.log("You hit the enemy with a +1!");
+    }
+    if (this.passives.includes("TwoWeapon")) {
+      console.log("You're attacking less accurately, but more powerfully!");
+      const rollValue1 = d6() + (this.passives.includes("PlusOne") ? 1 : 0);
+      const rollValue2 = d6() + (this.passives.includes("PlusOne") ? 1 : 0);
+      const rollValue = Math.min(rollValue1, rollValue2);
+      if (rollValue >= enemy.toHit) {
+        enemy.beHit(player);
+        this.score += 100;
+      }
+    } else {
+      const rollValue = d6() + (this.passives.includes("PlusOne") ? 1 : 0);
+      if (rollValue >= enemy.toHit) {
+        enemy.beHit(player);
+        this.score += 100;
+      }
     }
   }
 }
@@ -344,8 +414,15 @@ function generateBoxes() {
   for (var i = 0; i < 10; i++) {
     var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
     var key = freeCells[index];
-    var randomFruitIndex = Math.floor(Math.random() * fruit.length);
-    generatedMap[key] = fruit[randomFruitIndex];
+    var randomValue = Math.random();
+    if (randomValue < 0.5) {
+      var randomFruitIndex = Math.floor(Math.random() * fruit.length);
+      generatedMap[key] = fruit[randomFruitIndex];
+    } else if (randomValue < 0.75) {
+      generatedMap[key] = "🗡️"; // Dagger
+    } else {
+      generatedMap[key] = "⚔️"; // Double Sword
+    }
   }
 }
 
@@ -374,14 +451,19 @@ class Enemy {
   _draw() {
     generatedMap[this._x + "," + this._y] = this._emoji;
   }
-  beHit(rollValue) {
-    if (rollValue >= this.toHit) {
+  beHit(attacker) {
+    if (
+      attacker.passives.includes("TwoWeapon") ||
+      attacker.passives.includes("Mighty")
+    ) {
+      this.lives -= 2;
+    } else {
       this.lives -= 1;
-      if (this.lives === 0) {
-        generatedMap[this._x + "," + this._y] = "🦴";
-        scheduler.remove(this);
-        enemies.splice(enemies.indexOf(this), 1);
-      }
+    }
+    if (this.lives <= 0) {
+      generatedMap[this._x + "," + this._y] = "🦴";
+      scheduler.remove(this);
+      enemies.splice(enemies.indexOf(this), 1);
     }
   }
   act() {
