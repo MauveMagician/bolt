@@ -1,3 +1,14 @@
+@font-face {
+  font-family: "EnterCommand";
+  src: url("/assets/fonts/EnterCommand-Bold.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+body {
+  font-family: "EnterCommand";
+}
+
 .ui {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -33,9 +44,15 @@
 
 .log {
   grid-area: b;
-  background-color: #555;
+  background-color: #111;
   height: auto;
   width: auto;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.logText {
+  font-size: 24px;
 }
 
 .bottomUi {
@@ -46,7 +63,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr 1fr 1fr;
-  font-family: "Jersey 10", sans-serif;
 }
 
 .livesContainer {

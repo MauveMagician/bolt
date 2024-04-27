@@ -5,10 +5,13 @@ import "./App.css";
 let player = null;
 let engine = null;
 let scheduler = null;
+let MAX_LOG_SIZE = 12;
+let MAX_INVENTORY_SIZE = 4;
 const generatedMap = {};
 const freeCells = [];
 const enemies = [];
 const eatFruit = {};
+const logContents = [];
 const fruit = [
   "🍏", // Green apple
   "🍎", // Red apple
@@ -27,6 +30,24 @@ const fruit = [
   "🥥", // Coconut
   "🥑", // Avocado
 ];
+const fruitNames = {
+  "🍏": "green apple",
+  "🍎": "red apple",
+  "🍐": "pear",
+  "🍊": "tangerine",
+  "🍋": "lemon",
+  "🍌": "banana",
+  "🍉": "watermelon",
+  "🍇": "grapes",
+  "🍓": "strawberry",
+  "🍈": "melon",
+  "🍒": "cherries",
+  "🍑": "peach",
+  "🥭": "mango",
+  "🍍": "pineapple",
+  "🥥": "coconut",
+  "🥑": "avocado",
+};
 const effects = [
   healing,
   extraHealing,
@@ -58,6 +79,19 @@ const weapons = [
   "🛡️", // Shield
   "🧤", // Gloves
 ];
+
+function log(message, color) {
+  const newMessage = (
+    <span className="logText" style={{ color }}>
+      {message}
+    </span>
+  );
+  logContents.push(newMessage);
+
+  if (logContents.length > MAX_LOG_SIZE) {
+    logContents.shift(); // Remove the first element of logContents
+  }
+}
 
 // Function to shuffle an array
 function shuffleArray(array) {
@@ -178,25 +212,52 @@ class Player {
     generatedMap[this._x + "," + this._y] = this._emoji;
   }
 
-  beHit(rollValue) {
+  beHit(enemy) {
+    const rollValue = d6();
     if (rollValue >= this.toHit) {
       this.lives -= 1;
+      log("The " + enemy.name + " hits " + this.name + "!", "red");
+      if (this.lives == 1) {
+        log(this.name + " is on their last breath!", "#8B0000");
+      }
       if (this.lives <= 0) {
         engine.lock();
-        console.log("Game over!");
+        log("Game over!", "#FF1493");
       }
       document.querySelector(".App").classList.add("shake");
       setTimeout(() => {
         document.querySelector(".App").classList.remove("shake");
       }, 200);
+    } else {
+      log("The " + enemy.name + " misses " + this.name + "!", "#FFA500");
     }
   }
 
   useGround() {
-    if (fruit.includes(this.ground)) {
+    if (
+      fruit.includes(this.ground) &&
+      this.inventory.length < MAX_INVENTORY_SIZE
+    ) {
       this.inventory.push(this.ground);
+      const fruitName = fruitNames[this.ground];
+      if (this.ground === "🍇" || this.ground === "🍒") {
+        log(this.name + " picks up " + fruitName + "!", "#FFE4E1");
+      } else {
+        const indefiniteArticle = ["a", "e", "i", "o", "u"].includes(
+          fruitName[0].toLowerCase()
+        )
+          ? "an"
+          : "a";
+        log(
+          this.name + " picks up " + indefiniteArticle + " " + fruitName + "!",
+          "#FFE4E1"
+        );
+      }
       this.ground = "⬛️";
       return true;
+    } else if (this.inventory.length >= MAX_INVENTORY_SIZE) {
+      log(this.name + " has too many items!", "#F08080");
+      return false;
     }
     if (this.ground === "📦") {
       if (this.wear === "") {
@@ -226,12 +287,16 @@ class Player {
     // Example: When equipping a dagger, add the "PlusOne" passive ability
     console.log("Wielding " + item);
     if (item === "🗡️") {
+      log("Dagger equipped", "white");
       this.wield = "🗡️";
       this.passives.push("PlusOne");
+      log("You are now attacking at a +1", "cyan");
     }
     if (item === "⚔️") {
+      log("Double Sword equipped", "white");
       this.wield = "⚔️";
       this.passives.push("TwoWeapon");
+      log("You are innacurate but mighty", "cyan");
     }
   }
 
@@ -379,25 +444,7 @@ class Player {
   }
 
   attack(enemy) {
-    if (this.passives.includes("PlusOne")) {
-      console.log("You hit the enemy with a +1!");
-    }
-    if (this.passives.includes("TwoWeapon")) {
-      console.log("You're attacking less accurately, but more powerfully!");
-      const rollValue1 = d6() + (this.passives.includes("PlusOne") ? 1 : 0);
-      const rollValue2 = d6() + (this.passives.includes("PlusOne") ? 1 : 0);
-      const rollValue = Math.min(rollValue1, rollValue2);
-      if (rollValue >= enemy.toHit) {
-        enemy.beHit(player);
-        this.score += 100;
-      }
-    } else {
-      const rollValue = d6() + (this.passives.includes("PlusOne") ? 1 : 0);
-      if (rollValue >= enemy.toHit) {
-        enemy.beHit(player);
-        this.score += 100;
-      }
-    }
+    enemy.beHit(player);
   }
 }
 
@@ -411,7 +458,7 @@ function createPlayer() {
 }
 
 function generateBoxes() {
-  for (var i = 0; i < 10; i++) {
+  for (var i = 0; i < 50; i++) {
     var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
     var key = freeCells[index];
     var randomValue = Math.random();
@@ -452,18 +499,36 @@ class Enemy {
     generatedMap[this._x + "," + this._y] = this._emoji;
   }
   beHit(attacker) {
-    if (
-      attacker.passives.includes("TwoWeapon") ||
-      attacker.passives.includes("Mighty")
-    ) {
-      this.lives -= 2;
-    } else {
-      this.lives -= 1;
+    let rollValue = d6();
+    if (attacker.passives.includes("PlusOne")) {
+      rollValue += 1;
     }
-    if (this.lives <= 0) {
-      generatedMap[this._x + "," + this._y] = "🦴";
-      scheduler.remove(this);
-      enemies.splice(enemies.indexOf(this), 1);
+    if (attacker.passives.includes("TwoWeapon")) {
+      rollValue = Math.min(d6(), d6());
+    }
+    if (rollValue >= this.toHit) {
+      if (
+        attacker.passives.includes("Mighty") ||
+        attacker.passives.includes("TwoWeapon")
+      ) {
+        this.lives -= 2;
+      } else {
+        this.lives -= 1;
+      }
+      if (this.lives <= 0) {
+        log(attacker.name + " slays the " + this.name + "!", "#FFD700");
+        scheduler.remove(this);
+        enemies.splice(enemies.indexOf(this), 1);
+        if (this.ground === "⬛️") {
+          generatedMap[this._x + "," + this._y] = "🦴";
+        } else {
+          generatedMap[this._x + "," + this._y] = this.ground;
+        }
+      } else {
+        log(attacker.name + " hits the " + this.name + "!", "#E5DE00");
+      }
+    } else {
+      log(attacker.name + " misses the " + this.name + "!", "#F0E68C");
     }
   }
   act() {
@@ -489,7 +554,7 @@ class Enemy {
       this.path = path.slice(0); // Store the computed path for the goblin
       this.path.shift();
       if (this.path.length === 1) {
-        player.beHit(d6());
+        player.beHit(this);
       } else {
         generatedMap[this._x + "," + this._y] = this.ground;
         var nextStep = this.path[0];
@@ -540,6 +605,7 @@ function createBeing(what) {
 
 function App() {
   const [dungeon, setDungeon] = useState({}); // Initialize dungeon state
+  const [logMessages, setLogMessages] = useState([]);
 
   useEffect(() => {
     setDungeon({ ...generatedMap }); // Update dungeon state with the initial generatedMap
@@ -700,11 +766,21 @@ function App() {
     );
   }
 
+  const renderLog = () => {
+    return (
+      <div className="log">
+        {logContents.map((message, index) => (
+          <div key={index}>{message}</div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="App">
       <div className="ui">
         {renderMap()}
-        <div className="log"></div>
+        {renderLog()}
         <div className="bottomUi">
           {renderLivesContainer()}
           {renderLuckContainer()}
@@ -721,4 +797,5 @@ function App() {
 //STARTING GAME
 initializeGame();
 console.log(eatFruit);
+log("Game started!", "#32CD32");
 export default App;
