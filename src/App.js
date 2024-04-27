@@ -146,6 +146,11 @@ function poison(eater) {
 }
 
 function haste(eater) {
+  if (eater.passives.includes("Hasted")) {
+    log(eater.name + " is even faster!", "#00FFFF");
+    eater.speed = 6;
+    return;
+  }
   if (eater.passives.includes("Slowed")) {
     eater.passives.splice(eater.passives.indexOf("Slowed"), 1);
     delete eater.tempEffects["Slowed"];
@@ -181,6 +186,10 @@ function mutation(eater) {
   log(eater.name + " experiences the effect of Mutation", "blue");
 }
 function slowing(eater) {
+  if (eater.passives.includes("Slowed")) {
+    log(eater.name + " can't get any slower!", "#00FFFF");
+    return;
+  }
   if (eater.passives.includes("Hasted")) {
     eater.passives.splice(eater.passives.indexOf("Hasted"), 1);
     delete eater.tempEffects["Hasted"];
@@ -249,7 +258,14 @@ function fire(eater) {
   log(eater.name + " is on fire until they pass their turn!", "#FF4500");
 }
 function luck(eater) {
-  log(eater.name + " experiences the effect of Luck", "blue");
+  if (eater.luck >= eater.maxLuck) {
+    eater.luck += 1;
+    eater.maxLuck += 1;
+    log(eater.name + " feels luckier!", "#7FFF00");
+  } else {
+    eater.luck = eater.maxLuck;
+    log(eater.name + "'s luck is refilled!", "#7FFF00");
+  }
 }
 
 function eat(eater, fruit) {
@@ -510,6 +526,12 @@ class Player {
       if (player.passives.includes("On fire")) {
         player.tempEffects["On fire"] = 0;
       }
+      if (this.luck < Math.floor(this.maxLuck / 2)) {
+        this.luck = Math.floor(this.maxLuck / 2);
+      }
+      if (this.luck > this.maxLuck) {
+        this.luck = this.maxLuck;
+      }
       engine.unlock();
       return;
     }
@@ -641,7 +663,7 @@ class Enemy {
     emoji = "👺",
     maxLives = 2,
     name = "goblin",
-    toHit = 1,
+    toHit = 3,
     speed = 2
   ) {
     this._x = x;
@@ -682,6 +704,14 @@ class Enemy {
     ) {
       rollValue = Math.min(d6(), d6());
     }
+    if (
+      (rollValue === this.toHit - 1 || rollValue === 5) &&
+      attacker.luck > 0
+    ) {
+      log("Lucky!", "#00FF00");
+      attacker.luck -= 1;
+      rollValue += 1;
+    }
     if (rollValue >= this.toHit) {
       if (
         (attacker.passives.includes("Mighty") ||
@@ -709,6 +739,48 @@ class Enemy {
       }
     } else {
       log(attacker.name + " misses the " + this.name + "!", "#F0E68C");
+      attacker.luck += 1;
+      if (attacker.luck > attacker.maxLuck) {
+        attacker.luck = attacker.maxLuck;
+      }
+    }
+    if (rollValue >= 6) {
+      log("Critical hit!", "#FFD700");
+      if (this.lives > 0) {
+        log(attacker.name + " makes an extra attack!", "#FFD700");
+        this.beHit(attacker);
+      } else {
+        const attackerX = attacker.x;
+        const attackerY = attacker.y;
+        const directions = [
+          [0, -1], // North
+          [1, -1], // Northeast
+          [1, 0], // East
+          [1, 1], // Southeast
+          [0, 1], // South
+          [-1, 1], // Southwest
+          [-1, 0], // West
+          [-1, -1], // Northwest
+        ];
+        let neighborX = undefined;
+        let neighborY = undefined;
+        for (let i = 0; i < directions.length; i++) {
+          const [dx, dy] = directions[i];
+          neighborX = attackerX + dx;
+          neighborY = attackerY + dy;
+          enemies.forEach((enemy) => {
+            if (
+              enemy.x === neighborX &&
+              enemy.y === neighborY &&
+              enemy.lives > 0
+            ) {
+              log(attacker.name + " makes an extra attack!", "#FFD700");
+              enemy.beHit(attacker);
+              return;
+            }
+          });
+        }
+      }
     }
   }
   die() {
@@ -779,7 +851,7 @@ function initializeGame() {
 
 function createBeing(what) {
   const beings = [];
-  for (var i = 0; i < 10; i++) {
+  for (var i = 0; i < 30; i++) {
     var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
     var key = freeCells.splice(index, 1)[0];
     var parts = key.split(",");
@@ -900,7 +972,9 @@ function App() {
   function renderLuckContainer() {
     return (
       <div className="luckContainer">
-        <div>Luck:</div>
+        <div>
+          Luck {player.luck}/{player.maxLuck}
+        </div>
       </div>
     );
   }
