@@ -135,23 +135,35 @@ function extraHealing(eater) {
   }
 }
 function poison(eater) {
-  log(eater.name + " eats the poison fruit!", "#FF0000");
   if (eater.lives == 1) {
+    log(eater.name + " is slain by poison!", "#FF0000");
     eater.lives = 0;
     eater.die();
     return;
   }
+  log(eater.name + " is hurt by poison!", "#FF0000");
   eater.lives = 1;
 }
 
 function haste(eater) {
-  log(eater.name + " experiences the effect of Haste", "blue");
+  if (eater.passives.includes("Slowed")) {
+    eater.passives.splice(eater.passives.indexOf("Slowed"), 1);
+    delete eater.tempEffects["Slowed"];
+    log(eater.name + " is no longer slow!", "#00FFFF");
+    eater.speed = 2;
+    return;
+  }
+  eater.passives.push("Hasted");
+  const duration = d6() + d6() + 6;
+  eater.speed = 4;
+  eater.tempEffects["Hasted"] = duration;
+  log(eater.name + " is fast for " + duration + " turns!", "#00FFFF");
 }
 function might(eater) {
   eater.passives.push("Mighty");
   const duration = d6() + d6() + 6;
   eater.tempEffects["Mighty"] = duration;
-  log(eater.name + " becomes powerful for " + duration + " turns!", "#00BFFF");
+  log(eater.name + " is powerful for " + duration + " turns!", "#00BFFF");
 }
 function confusion(eater) {
   eater.passives.push("Confused");
@@ -160,13 +172,27 @@ function confusion(eater) {
   log(eater.name + " is confused for " + duration + " turns!", "#FF00FF");
 }
 function flying(eater) {
-  log(eater.name + " experiences the effect of Flying", "blue");
+  eater.passives.push("Flying");
+  const duration = d6() + d6() + 6;
+  eater.tempEffects["Flying"] = duration;
+  log(eater.name + " is flying for " + duration + " turns!", "#87CEFA");
 }
 function mutation(eater) {
   log(eater.name + " experiences the effect of Mutation", "blue");
 }
 function slowing(eater) {
-  log(eater.name + " experiences the effect of Slowing", "blue");
+  if (eater.passives.includes("Hasted")) {
+    eater.passives.splice(eater.passives.indexOf("Hasted"), 1);
+    delete eater.tempEffects["Hasted"];
+    log(eater.name + " is no longer hasted!", "#00FFFF");
+    eater.speed = 2;
+    return;
+  }
+  eater.passives.push("Slowed");
+  const duration = d6() + d6() + 6;
+  eater.speed = 1;
+  eater.tempEffects["Slowed"] = duration;
+  log(eater.name + " is slow for " + duration + " turns!", "#00FFFF");
 }
 function invunlerability(eater) {
   eater.passives.push("Invulnerable");
@@ -178,19 +204,49 @@ function invunlerability(eater) {
   );
 }
 function weakness(eater) {
-  log(eater.name + " experiences the effect of Weakness", "blue");
+  eater.passives.push("Weak");
+  const duration = d6() + d6() + 6;
+  eater.tempEffects["Weak"] = duration;
+  log(eater.name + " becomes weakened for " + duration + " turns!", "#8B0000");
 }
 function beasthood(eater) {
   log(eater.name + " experiences the effect of Beasthood", "blue");
 }
 function cancellation(eater) {
-  log(eater.name + " experiences the effect of Cancellation", "blue");
+  if (Object.keys(eater.tempEffects).length === 0) {
+    if (eater.passives.length > 0) {
+      const filteredPassives = eater.passives.filter(
+        (passive) => passive !== "TwoWeapon" && passive !== "PlusOne"
+      );
+      if (filteredPassives.length > 0) {
+        const randomIndex = Math.floor(Math.random() * filteredPassives.length);
+        const removedPassive = filteredPassives.splice(randomIndex, 1)[0];
+        eater.passives = filteredPassives;
+        log(eater.name + " loses the passive: " + removedPassive, "#9932CC");
+        return;
+      }
+    }
+  } else {
+    for (let effect in eater.tempEffects) {
+      delete eater.tempEffects[effect]; // Remove the effect from tempEffects
+      eater.passives = eater.passives.filter((passive) => passive !== effect); // Filter out the passive from passives
+    }
+    log(eater.name + "'s temporary effects are cancelled!", "#9932CC");
+    return;
+  }
+  log(eater.name + " is cancelled, but loses nothing", "#9932CC");
 }
 function sleeping(eater) {
-  log(eater.name + " experiences the effect of Sleeping", "blue");
+  eater.passives.push("Asleep");
+  const duration = d6() + 3;
+  eater.tempEffects["Asleep"] = duration;
+  log(eater.name + " falls asleep for " + duration + " turns!", "#AFEEEE");
 }
 function fire(eater) {
-  log(eater.name + " experiences the effect of Fire", "blue");
+  eater.passives.push("On fire");
+  const duration = Infinity;
+  eater.tempEffects["On fire"] = duration;
+  log(eater.name + " is on fire until they pass their turn!", "#FF4500");
 }
 function luck(eater) {
   log(eater.name + " experiences the effect of Luck", "blue");
@@ -215,7 +271,10 @@ class Player {
     name = "Bolt",
     toHit = 3,
     inventory = [],
-    passives = []
+    passives = [],
+    speed = 2,
+    luck = 3,
+    maxLuck = 3
   ) {
     this._x = x;
     this._y = y;
@@ -231,6 +290,9 @@ class Player {
     this.inventory = inventory;
     this.passives = passives;
     this.tempEffects = {};
+    this.speed = speed;
+    this.luck = luck;
+    this.maxLuck = maxLuck;
     this._draw();
   }
 
@@ -244,6 +306,10 @@ class Player {
 
   _draw() {
     generatedMap[this._x + "," + this._y] = this._emoji;
+  }
+
+  getSpeed() {
+    return this.speed;
   }
 
   beHit(enemy) {
@@ -267,6 +333,17 @@ class Player {
       }, 200);
     } else {
       log("The " + enemy.name + " misses " + this.name + "!", "#FFA500");
+    }
+  }
+
+  burn() {
+    this.lives -= 1;
+    log(this.name + " is hurt by burning!", "#FF4500");
+    if (this.lives == 1) {
+      log(this.name + " is on their last breath!", "#8B0000");
+    }
+    if (this.lives <= 0) {
+      this.die();
     }
   }
 
@@ -360,16 +437,26 @@ class Player {
   }
 
   act() {
-    engine.lock();
-    /* wait for user input; do stuff when user hits a key */
-    window.addEventListener("keydown", this);
+    if (this.passives.includes("Asleep")) {
+      log(this.name + " is asleep", "red");
+    } else {
+      engine.lock();
+      /* wait for user input; do stuff when user hits a key */
+      window.addEventListener("keydown", this);
+    }
     for (let key in player.tempEffects) {
       // Access the key and value of the dictionary
       player.tempEffects[key] -= 1;
       if (player.tempEffects[key] <= 0) {
+        if (key === "Hasted" || key === "Slowed") {
+          this.speed = 2;
+        }
         delete player.tempEffects[key];
-        player.passives.splice(key, 1);
-        log(this.name + " is no longer affected by " + key, "SkyBlue");
+        const passiveIndex = player.passives.indexOf(key);
+        if (passiveIndex !== -1) {
+          player.passives.splice(passiveIndex, 1);
+          log(player.name + " is no longer affected by " + key, "SkyBlue");
+        }
       }
     }
   }
@@ -420,6 +507,9 @@ class Player {
     if (code === 188) {
       // If the comma key is pressed, pass the turn
       window.removeEventListener("keydown", this);
+      if (player.passives.includes("On fire")) {
+        player.tempEffects["On fire"] = 0;
+      }
       engine.unlock();
       return;
     }
@@ -479,6 +569,9 @@ class Player {
       if (confusion) {
         log(this.name + " tries to move into a wall!", "#EE82EE");
         window.removeEventListener("keydown", this);
+        if (player.passives.includes("On fire")) {
+          player.burn();
+        }
         engine.unlock();
       }
       return; // Can't move into a wall
@@ -489,6 +582,9 @@ class Player {
           attack = true;
           player.attack(enemy);
           window.removeEventListener("keydown", this);
+          if (player.passives.includes("On fire")) {
+            player.burn();
+          }
           engine.unlock();
           return;
         }
@@ -501,6 +597,9 @@ class Player {
       this._y = newY;
       this._draw(); // Draw the player at the new position
       window.removeEventListener("keydown", this);
+      if (player.passives.includes("On fire")) {
+        player.burn();
+      }
       engine.unlock();
     }
   }
@@ -536,7 +635,15 @@ function generateBoxes() {
 }
 
 class Enemy {
-  constructor(x, y, emoji = "👺", maxLives = 2, name = "goblin", toHit = 1) {
+  constructor(
+    x,
+    y,
+    emoji = "👺",
+    maxLives = 2,
+    name = "goblin",
+    toHit = 1,
+    speed = 2
+  ) {
     this._x = x;
     this._y = y;
     this._emoji = emoji;
@@ -548,6 +655,7 @@ class Enemy {
     this._draw();
     this.path = [];
     this.ground = "⬛️";
+    this.speed = speed;
     enemies.push(this);
   }
   get x() {
@@ -560,18 +668,25 @@ class Enemy {
   _draw() {
     generatedMap[this._x + "," + this._y] = this._emoji;
   }
+  getSpeed() {
+    return this.speed;
+  }
   beHit(attacker) {
     let rollValue = d6();
     if (attacker.passives.includes("PlusOne")) {
       rollValue += 1;
     }
-    if (attacker.passives.includes("TwoWeapon")) {
+    if (
+      attacker.passives.includes("TwoWeapon") ||
+      attacker.passives.includes("Weak")
+    ) {
       rollValue = Math.min(d6(), d6());
     }
     if (rollValue >= this.toHit) {
       if (
-        attacker.passives.includes("Mighty") ||
-        attacker.passives.includes("TwoWeapon")
+        (attacker.passives.includes("Mighty") ||
+          attacker.passives.includes("TwoWeapon")) &&
+        !attacker.passives.includes("Weak")
       ) {
         this.lives -= 2;
       } else {
@@ -581,8 +696,9 @@ class Enemy {
         log(attacker.name + " slays the " + this.name + "!", "#FFD700");
         this.die();
       } else if (
-        attacker.passives.includes("Mighty") ||
-        attacker.passives.includes("TwoWeapon")
+        (attacker.passives.includes("Mighty") ||
+          attacker.passives.includes("TwoWeapon")) &&
+        !attacker.passives.includes("Weak")
       ) {
         log(
           attacker.name + " deals a mighty blow to the " + this.name + "!",
@@ -652,7 +768,7 @@ function initializeGame() {
   createPlayer();
   generateBoxes();
   const goblins = createBeing(Enemy);
-  scheduler = new ROT.Scheduler.Simple();
+  scheduler = new ROT.Scheduler.Speed();
   scheduler.add(player, true);
   goblins.forEach((element) => {
     scheduler.add(element, true);
@@ -871,5 +987,4 @@ function App() {
 initializeGame();
 console.log(eatFruit);
 log("Game started!", "#32CD32");
-invunlerability(player);
 export default App;
