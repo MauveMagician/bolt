@@ -114,58 +114,62 @@ function randomizeFruit() {
   }
 }
 
-function healing() {
-  console.log("Healing effect");
+function healing(eater) {
+  eater.lives += 2;
+  if (eater.lives > eater.maxLives) {
+    eater.lives = eater.maxLives;
+  }
+  log(eater.name + " feels better!", "#7FFF00");
 }
-function extraHealing() {
-  console.log("Extra healing effect");
+function extraHealing(eater) {
+  log(eater.name + " experiences the effect of Extra healing", "blue");
 }
-function poison() {
-  console.log("Poison effect");
+function poison(eater) {
+  log(eater.name + " experiences the effect of Poison", "blue");
 }
-function haste() {
-  console.log("Haste effect");
+function haste(eater) {
+  log(eater.name + " experiences the effect of Haste", "blue");
 }
-function might() {
-  console.log("Might effect");
+function might(eater) {
+  log(eater.name + " experiences the effect of Might", "blue");
 }
-function confusion() {
-  console.log("Confusion effect");
+function confusion(eater) {
+  log(eater.name + " experiences the effect of Confusion", "blue");
 }
-function flying() {
-  console.log("Flying effect");
+function flying(eater) {
+  log(eater.name + " experiences the effect of Flying", "blue");
 }
-function mutation() {
-  console.log("Mutation effect");
+function mutation(eater) {
+  log(eater.name + " experiences the effect of Mutation", "blue");
 }
-function slowing() {
-  console.log("Slowing effect");
+function slowing(eater) {
+  log(eater.name + " experiences the effect of Slowing", "blue");
 }
-function invunlerability() {
-  console.log("Invulnerability effect");
+function invunlerability(eater) {
+  log(eater.name + " experiences the effect of Invulnerability", "blue");
 }
-function weakness() {
-  console.log("Weakness effect");
+function weakness(eater) {
+  log(eater.name + " experiences the effect of Weakness", "blue");
 }
-function beasthood() {
-  console.log("Beasthood effect");
+function beasthood(eater) {
+  log(eater.name + " experiences the effect of Beasthood", "blue");
 }
-function cancellation() {
-  console.log("Cancellation effect");
+function cancellation(eater) {
+  log(eater.name + " experiences the effect of Cancellation", "blue");
 }
-function sleeping() {
-  console.log("Sleeping effect");
+function sleeping(eater) {
+  log(eater.name + " experiences the effect of Sleeping", "blue");
 }
-function fire() {
-  console.log("Fire effect");
+function fire(eater) {
+  log(eater.name + " experiences the effect of Fire", "blue");
 }
-function luck() {
-  console.log("Luck effect");
+function luck(eater) {
+  log(eater.name + " experiences the effect of Luck", "blue");
 }
 
 function eat(eater, fruit) {
   if (eatFruit[fruit]) {
-    eatFruit[fruit]();
+    eatFruit[fruit](eater);
   }
 }
 
