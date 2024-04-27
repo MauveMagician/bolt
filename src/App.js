@@ -122,19 +122,42 @@ function healing(eater) {
   log(eater.name + " feels better!", "#7FFF00");
 }
 function extraHealing(eater) {
-  log(eater.name + " experiences the effect of Extra healing", "blue");
+  if (eater.lives >= eater.maxLives) {
+    eater.lives += 1;
+    eater.maxLives += 1;
+    log(eater.name + " feels tougher!", "#7FFF00");
+  } else {
+    eater.lives += 4;
+    if (eater.lives > eater.maxLives) {
+      eater.lives = eater.maxLives;
+    }
+    log(eater.name + " feels much better!", "#7FFF00");
+  }
 }
 function poison(eater) {
-  log(eater.name + " experiences the effect of Poison", "blue");
+  log(eater.name + " eats the poison fruit!", "#FF0000");
+  if (eater.lives == 1) {
+    eater.lives = 0;
+    eater.die();
+    return;
+  }
+  eater.lives = 1;
 }
+
 function haste(eater) {
   log(eater.name + " experiences the effect of Haste", "blue");
 }
 function might(eater) {
-  log(eater.name + " experiences the effect of Might", "blue");
+  eater.passives.push("Mighty");
+  const duration = d6() + d6() + 6;
+  eater.tempEffects["Mighty"] = duration;
+  log(eater.name + " becomes powerful for " + duration + " turns!", "#00BFFF");
 }
 function confusion(eater) {
-  log(eater.name + " experiences the effect of Confusion", "blue");
+  eater.passives.push("Confused");
+  const duration = d6() + 6;
+  eater.tempEffects["Confused"] = duration;
+  log(eater.name + " is confused for " + duration + " turns!", "#FF00FF");
 }
 function flying(eater) {
   log(eater.name + " experiences the effect of Flying", "blue");
@@ -146,7 +169,13 @@ function slowing(eater) {
   log(eater.name + " experiences the effect of Slowing", "blue");
 }
 function invunlerability(eater) {
-  log(eater.name + " experiences the effect of Invulnerability", "blue");
+  eater.passives.push("Invulnerable");
+  const duration = d6() + d6() + 6;
+  eater.tempEffects["Invulnerable"] = duration;
+  log(
+    eater.name + " becomes invulnerable for " + duration + " turns!",
+    "#00BFFF"
+  );
 }
 function weakness(eater) {
   log(eater.name + " experiences the effect of Weakness", "blue");
@@ -201,6 +230,7 @@ class Player {
     this.wear = "";
     this.inventory = inventory;
     this.passives = passives;
+    this.tempEffects = {};
     this._draw();
   }
 
@@ -217,6 +247,10 @@ class Player {
   }
 
   beHit(enemy) {
+    if (this.passives.includes("Invulnerable")) {
+      log(this.name + " shrugs off the " + enemy.name + "'s attack", "#B0C4DE");
+      return;
+    }
     const rollValue = d6();
     if (rollValue >= this.toHit) {
       this.lives -= 1;
@@ -225,8 +259,7 @@ class Player {
         log(this.name + " is on their last breath!", "#8B0000");
       }
       if (this.lives <= 0) {
-        engine.lock();
-        log("Game over!", "#FF1493");
+        this.die();
       }
       document.querySelector(".App").classList.add("shake");
       setTimeout(() => {
@@ -235,6 +268,11 @@ class Player {
     } else {
       log("The " + enemy.name + " misses " + this.name + "!", "#FFA500");
     }
+  }
+
+  die() {
+    engine.lock();
+    log("Game over!", "#FF1493");
   }
 
   useGround() {
@@ -325,6 +363,15 @@ class Player {
     engine.lock();
     /* wait for user input; do stuff when user hits a key */
     window.addEventListener("keydown", this);
+    for (let key in player.tempEffects) {
+      // Access the key and value of the dictionary
+      player.tempEffects[key] -= 1;
+      if (player.tempEffects[key] <= 0) {
+        delete player.tempEffects[key];
+        player.passives.splice(key, 1);
+        log(this.name + " is no longer affected by " + key, "SkyBlue");
+      }
+    }
   }
 
   handleEvent(e) {
@@ -416,13 +463,24 @@ class Player {
       }
       return;
     }
-
-    var diff = ROT.DIRS[8][keyMap[code]];
+    var confusion = false;
+    if (player.passives.includes("Confused") && Math.random() < 0.5) {
+      var diff = ROT.DIRS[8][Math.floor(Math.random() * 7) + 1];
+      confusion = true;
+      log(this.name + " moved randomly due to confusion", "#FF00FF");
+    } else {
+      var diff = ROT.DIRS[8][keyMap[code]];
+    }
     var newX = this._x + diff[0];
     var newY = this._y + diff[1];
     const newKey = newX + "," + newY;
 
     if (generatedMap[newKey] === "🟫") {
+      if (confusion) {
+        log(this.name + " tries to move into a wall!", "#EE82EE");
+        window.removeEventListener("keydown", this);
+        engine.unlock();
+      }
       return; // Can't move into a wall
     } else {
       //Check if there is an enemy and attack it
@@ -478,7 +536,7 @@ function generateBoxes() {
 }
 
 class Enemy {
-  constructor(x, y, emoji = "👺", maxLives = 1, name = "goblin", toHit = 1) {
+  constructor(x, y, emoji = "👺", maxLives = 2, name = "goblin", toHit = 1) {
     this._x = x;
     this._y = y;
     this._emoji = emoji;
@@ -521,18 +579,29 @@ class Enemy {
       }
       if (this.lives <= 0) {
         log(attacker.name + " slays the " + this.name + "!", "#FFD700");
-        scheduler.remove(this);
-        enemies.splice(enemies.indexOf(this), 1);
-        if (this.ground === "⬛️") {
-          generatedMap[this._x + "," + this._y] = "🦴";
-        } else {
-          generatedMap[this._x + "," + this._y] = this.ground;
-        }
+        this.die();
+      } else if (
+        attacker.passives.includes("Mighty") ||
+        attacker.passives.includes("TwoWeapon")
+      ) {
+        log(
+          attacker.name + " deals a mighty blow to the " + this.name + "!",
+          "#E5DE00"
+        );
       } else {
         log(attacker.name + " hits the " + this.name + "!", "#E5DE00");
       }
     } else {
       log(attacker.name + " misses the " + this.name + "!", "#F0E68C");
+    }
+  }
+  die() {
+    scheduler.remove(this);
+    enemies.splice(enemies.indexOf(this), 1);
+    if (this.ground === "⬛️") {
+      generatedMap[this._x + "," + this._y] = "🦴";
+    } else {
+      generatedMap[this._x + "," + this._y] = this.ground;
     }
   }
   act() {
@@ -802,4 +871,5 @@ function App() {
 initializeGame();
 console.log(eatFruit);
 log("Game started!", "#32CD32");
+invunlerability(player);
 export default App;
