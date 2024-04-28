@@ -11,6 +11,7 @@ let MAX_BEASTHOOD = 16;
 let TO_LEVEL_2 = 4;
 let TO_LEVEL_3 = 8;
 let TO_LEVEL_4 = 16;
+let selectedAnimal = "🐶";
 const generatedMap = {};
 const freeCells = [];
 const enemies = [];
@@ -362,13 +363,11 @@ class Player {
     emoji = "🐶",
     maxLives = 3,
     name = "Bolt",
-    toHit = 3,
+    toHit = 4,
     inventory = [],
     passives = [],
     speed = 2,
-    luck = 4,
     maxLuck = 4,
-    level = 1,
     minBeasthood = 0,
     levelBenefits = ["Digger", "Attack dog", "Sapper"]
   ) {
@@ -388,9 +387,9 @@ class Player {
     this.tempEffects = {};
     this.speed = speed;
     this.defaultSpeed = speed;
-    this.luck = luck;
+    this.luck = maxLuck;
     this.maxLuck = maxLuck;
-    this.level = level;
+    this.level = 1;
     this.beasthood = minBeasthood;
     this.minBeasthood = minBeasthood;
     this.levelBenefits = levelBenefits;
@@ -524,6 +523,15 @@ class Player {
   }
 
   die() {
+    if (this.passives.includes("Many lives")) {
+      log(this.name + " is slain but has many lives!", "#FF1493");
+      this.beasthoodDown(Infinity);
+      if (this.maxLives < 1) {
+        this.maxLives = 1;
+      }
+      this.lives = this.maxLives;
+      return;
+    }
     engine.lock();
     log("Game over!", "#FF1493");
   }
@@ -613,7 +621,6 @@ class Player {
   }
 
   act() {
-    log(this.passives, "white");
     if (this.passives.includes("Asleep")) {
       log(this.name + " is asleep", "red");
     } else {
@@ -817,6 +824,16 @@ class Player {
         player.burn();
       }
       this.beasthoodDown(1);
+      if (this.passives.includes("Pounce")) {
+        const pounce_x = this._x + diff[0];
+        const pounce_y = this._y + diff[1];
+        enemies.forEach((enemy) => {
+          if (enemy.x === pounce_x && enemy.y === pounce_y && enemy.lives > 0) {
+            log(this.name + " pounces on the " + enemy.name + "!", "gold");
+            player.attack(enemy);
+          }
+        });
+      }
       engine.unlock();
     }
   }
@@ -833,7 +850,21 @@ function createPlayer() {
   var parts = key.split(",");
   var x = parseInt(parts[0]);
   var y = parseInt(parts[1]);
-  player = new Player(x, y, "🐶", 3);
+  switch (selectedAnimal) {
+    case "🐶":
+      player = new Player(x, y, "🐶", 3);
+      break;
+    case "🐱":
+      player = new Player(x, y, "🐱", 2, "Mimi", 2, [], [], 3, 5, 0, [
+        "Pounce",
+        "Luck mastery",
+        "Many lives",
+      ]);
+      break;
+    default:
+      player = new Player(x, y, selectedAnimal, 3);
+      break;
+  }
 }
 
 function populateItems() {
@@ -901,6 +932,14 @@ class Enemy {
       rollValue = Math.min(d6(), d6());
     }
     if (
+      attacker.passives.includes("Luck mastery") &&
+      (rollValue === this.toHit - 2 || rollValue === 4) &&
+      attacker.luck > 0
+    ) {
+      log("Very lucky!", "#00FF00");
+      attacker.luck -= 1;
+      rollValue += 2;
+    } else if (
       (rollValue === this.toHit - 1 || rollValue === 5) &&
       attacker.luck > 0
     ) {
@@ -1066,7 +1105,67 @@ function createBeing(what) {
 
 function App() {
   const [dungeon, setDungeon] = useState({}); // Initialize dungeon state
-  const [logMessages, setLogMessages] = useState([]);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [animalSelected, setAnimalSelected] = useState(false);
+
+  const startGame = () => {
+    setGameStarted(true);
+  };
+
+  const selectAnimal = () => {
+    initializeGame();
+    log("Game started!", "#32CD32");
+    beasthood(player);
+    setAnimalSelected(true);
+  };
+
+  const renderStartScreen = () => {
+    if (!gameStarted) {
+      return (
+        <div className="startScreen">
+          <h1>Beasts of Labyrinth Tactics (BOLT)</h1>
+          <button onClick={startGame}>Game Start</button>
+          <a
+            href="https://your-donation-link.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Donate
+          </a>
+        </div>
+      );
+    }
+    return null; // Return null if game has started
+  };
+
+  const renderAnimalSelectionScreen = () => {
+    return (
+      <div className="animalSelectionScreen">
+        <h2>Select Your Champion</h2>
+        <div className="animalGrid">
+          <div
+            className="animalGridItem"
+            onClick={() => {
+              selectedAnimal = "🐶";
+              selectAnimal();
+            }}
+          >
+            🐶
+          </div>
+          <div
+            className="animalGridItem"
+            onClick={() => {
+              selectedAnimal = "🐱";
+              selectAnimal();
+            }}
+          >
+            🐱
+          </div>
+        </div>
+        <button onClick={selectAnimal}>Select</button>
+      </div>
+    );
+  };
 
   useEffect(() => {
     setDungeon({ ...generatedMap }); // Update dungeon state with the initial generatedMap
@@ -1257,27 +1356,33 @@ function App() {
     );
   };
 
-  return (
-    <div className="App">
-      <div className="ui">
-        {renderMap()}
-        {renderLog()}
-        <div className="bottomUi">
-          {renderLivesContainer()}
-          {renderLuckContainer()}
-          {renderBeasthoodContainer()}
-          {renderEquipView()}
-          {renderInventoryView()}
-          {renderGroundView()}
+  const renderGame = () => {
+    return (
+      <div className="App">
+        <div className="ui">
+          {renderMap()}
+          {renderLog()}
+          <div className="bottomUi">
+            {renderLivesContainer()}
+            {renderLuckContainer()}
+            {renderBeasthoodContainer()}
+            {renderEquipView()}
+            {renderInventoryView()}
+            {renderGroundView()}
+          </div>
         </div>
       </div>
+    );
+  };
+
+  return (
+    <div className="App">
+      {renderStartScreen()}
+      {gameStarted && !animalSelected && renderAnimalSelectionScreen()}
+      {gameStarted && animalSelected ? renderGame() : null}
     </div>
   );
 }
 
 //STARTING GAME
-initializeGame();
-console.log(eatFruit);
-log("Game started!", "#32CD32");
-mutation(player);
 export default App;
