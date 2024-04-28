@@ -187,7 +187,79 @@ function flying(eater) {
   log(eater.name + " is flying for " + duration + " turns!", "#87CEFA");
 }
 function mutation(eater) {
-  log(eater.name + " experiences the effect of Mutation", "blue");
+  log(eater.name + " mutates!", "#DDA0DD");
+  const mutation_quality = d6();
+  if (mutation_quality > 4) {
+    //Good mutations
+    const mutation_type = d6();
+    switch (mutation_type) {
+      case 1:
+        eater.lives += 1;
+        eater.maxLives += 1;
+        log(eater.name + " becomes tougher!", "#DDA0DD");
+        break;
+      case 2:
+        eater.passives.push("Keen Eyes");
+        log(eater.name + " acquires keen accuracy!", "#DDA0DD");
+        break;
+      case 3:
+        eater.luck += 1;
+        eater.maxLuck += 1;
+        log(eater.name + " becomes luckier!", "#DDA0DD");
+        break;
+      case 4:
+        eater.passives.push("Thick skin");
+        log(eater.name + "'s skin thickens!", "#DDA0DD");
+        break;
+      case 5:
+        eater.minBeasthood += 1;
+        eater.beasthoodUp(1);
+        log(eater.name + " gains permanent beasthood!", "#DDA0DD");
+        break;
+      case 6:
+        log(eater.name + "'s mutation is unstable!", "#DDA0DD");
+        mutation(eater);
+        mutation(eater);
+        break;
+    }
+  } else {
+    //Bad mutations
+    const mutation_type = d6();
+    switch (mutation_type) {
+      case 1:
+        eater.lives -= 1;
+        eater.maxLives -= 1;
+        if (eater.lives <= 0) {
+          log(eater.name + " is slain by mutation!", "#DDA0DD");
+          eater.lives = 0;
+          eater.die();
+          return;
+        }
+        log(eater.name + " becomes flimsy!", "#DDA0DD");
+        break;
+      case 2:
+        eater.passives.push("Innacuracy");
+        log(eater.name + " loses accuracy!", "#DDA0DD");
+        break;
+      case 3:
+        eater.luck -= 1;
+        eater.maxLuck -= 1;
+        log(eater.name + " becomes less lucky!", "#DDA0DD");
+        break;
+      case 4:
+        eater.passives.push("Soft skin");
+        log(eater.name + " becomes easier to hit!", "#DDA0DD");
+        break;
+      case 5:
+        log(eater.name + "'s mutation is a dud!", "#DDA0DD");
+        break;
+      case 6:
+        log(eater.name + "'s mutation is unstable!", "#DDA0DD");
+        mutation(eater);
+        mutation(eater);
+        break;
+    }
+  }
 }
 function slowing(eater) {
   if (eater.passives.includes("Slowed")) {
@@ -375,8 +447,8 @@ class Player {
   beasthoodDown(value) {
     if (this.beasthood > 0) {
       this.beasthood -= value;
-      if (this.beasthood < 0) {
-        this.beasthood = 0;
+      if (this.beasthood < this.minBeasthood) {
+        this.beasthood = this.minBeasthood;
       }
       if (this.beasthood < TO_LEVEL_2 && this.level > 1) {
         log(this.name + " regresses to level 1!", "#FF7F50");
@@ -761,10 +833,10 @@ function createPlayer() {
   var parts = key.split(",");
   var x = parseInt(parts[0]);
   var y = parseInt(parts[1]);
-  player = new Player(x, y, "🐶", 99);
+  player = new Player(x, y, "🐶", 3);
 }
 
-function generateBoxes() {
+function populateItems() {
   for (var i = 0; i < 50; i++) {
     var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
     var key = freeCells[index];
@@ -966,7 +1038,7 @@ function initializeGame() {
   });
   randomizeFruit();
   createPlayer();
-  generateBoxes();
+  populateItems();
   const goblins = createBeing(Enemy);
   scheduler = new ROT.Scheduler.Speed();
   scheduler.add(player, true);
@@ -1207,4 +1279,5 @@ function App() {
 initializeGame();
 console.log(eatFruit);
 log("Game started!", "#32CD32");
+mutation(player);
 export default App;
