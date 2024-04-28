@@ -5,6 +5,8 @@ import "./App.css";
 let player = null;
 let engine = null;
 let scheduler = null;
+let throwing = false;
+let throwingIndex = undefined;
 let MAX_LOG_SIZE = 10;
 let MAX_INVENTORY_SIZE = 4;
 let MAX_BEASTHOOD = 16;
@@ -153,7 +155,7 @@ function poison(eater) {
 function haste(eater) {
   if (eater.passives.includes("Hasted")) {
     log(eater.name + " is even faster!", "#00FFFF");
-    eater.speed = 6;
+    eater.speed = 5;
     return;
   }
   if (eater.passives.includes("Slowed")) {
@@ -204,18 +206,30 @@ function mutation(eater) {
         log(eater.name + " acquires keen accuracy!", "#DDA0DD");
         break;
       case 3:
-        eater.luck += 1;
-        eater.maxLuck += 1;
-        log(eater.name + " becomes luckier!", "#DDA0DD");
+        if ("luck" in eater) {
+          eater.luck += 1;
+          eater.maxLuck += 1;
+          log(eater.name + " becomes luckier!", "#DDA0DD");
+        } else {
+          log(eater.name + "'s mutation is unstable!", "#DDA0DD");
+          mutation(eater);
+          mutation(eater);
+        }
         break;
       case 4:
         eater.passives.push("Thick skin");
         log(eater.name + "'s skin thickens!", "#DDA0DD");
         break;
       case 5:
-        eater.minBeasthood += 1;
-        eater.beasthoodUp(1);
-        log(eater.name + " gains permanent beasthood!", "#DDA0DD");
+        if ("beasthood" in eater) {
+          eater.minBeasthood += 1;
+          eater.beasthoodUp(1);
+          log(eater.name + " gains permanent beasthood!", "#DDA0DD");
+        } else {
+          log(eater.name + "'s mutation is unstable!", "#DDA0DD");
+          mutation(eater);
+          mutation(eater);
+        }
         break;
       case 6:
         log(eater.name + "'s mutation is unstable!", "#DDA0DD");
@@ -243,9 +257,15 @@ function mutation(eater) {
         log(eater.name + " loses accuracy!", "#DDA0DD");
         break;
       case 3:
-        eater.luck -= 1;
-        eater.maxLuck -= 1;
-        log(eater.name + " becomes less lucky!", "#DDA0DD");
+        if ("luck" in eater) {
+          eater.luck -= 1;
+          eater.maxLuck -= 1;
+          log(eater.name + " becomes less lucky!", "#DDA0DD");
+        } else {
+          log(eater.name + "'s mutation is unstable!", "#DDA0DD");
+          mutation(eater);
+          mutation(eater);
+        }
         break;
       case 4:
         eater.passives.push("Soft skin");
@@ -297,7 +317,14 @@ function weakness(eater) {
 }
 function beasthood(eater) {
   log(eater.name + " unleashes their instincts!", "#DC143C");
-  eater.beasthoodUp(16);
+  if ("beasthood" in eater) {
+    eater.beasthoodUp(16);
+  } else {
+    eater.lives *= 2;
+    eater.maxLives *= 2;
+    eater.toHit = Math.min(eater.toHit + 1, 6);
+    eater.speed += 1;
+  }
 }
 function cancellation(eater) {
   if (Object.keys(eater.tempEffects).length === 0) {
@@ -336,13 +363,18 @@ function fire(eater) {
   log(eater.name + " is on fire until they pass their turn!", "#FF4500");
 }
 function luck(eater) {
-  if (eater.luck >= eater.maxLuck) {
-    eater.luck += 1;
-    eater.maxLuck += 1;
-    log(eater.name + " feels luckier!", "#7FFF00");
+  if ("luck" in eater) {
+    if (eater.luck >= eater.maxLuck) {
+      eater.luck += 1;
+      eater.maxLuck += 1;
+      log(eater.name + " feels luckier!", "#7FFF00");
+    } else {
+      eater.luck = eater.maxLuck;
+      log(eater.name + "'s luck is refilled!", "#7FFF00");
+    }
   } else {
-    eater.luck = eater.maxLuck;
-    log(eater.name + "'s luck is refilled!", "#7FFF00");
+    eater.passives.push("Luck");
+    log(eater.name + " feels luckier!", "#7FFF00");
   }
 }
 
@@ -492,10 +524,35 @@ class Player {
       return;
     }
     const rollValue = d6();
+    if (
+      enemy.passives.includes("TwoWeapon") ||
+      enemy.passives.includes("Weak") ||
+      enemy.passives.includes("Innacuracy")
+    ) {
+      rollValue = Math.min(d6(), d6());
+    }
+    if (
+      enemy.passives.includes("Lucky") ||
+      enemy.passives.includes("Keen Eyes") ||
+      this.passives.includes("Soft Skin")
+    ) {
+      rollValue += 1;
+    }
+    if (this.passives.includes("Thick Skin")) {
+      rollValue -= 1;
+    }
     this.beasthoodUp(1);
     if (rollValue >= this.toHit) {
-      this.lives -= 1;
-      log("The " + enemy.name + " hits " + this.name + "!", "red");
+      if (enemy.passives.includes("Mighty")) {
+        this.lives -= 2;
+        log(
+          "The " + enemy.name + " hits " + this.name + " with a mighty blow!",
+          "red"
+        );
+      } else {
+        this.lives -= 1;
+        log("The " + enemy.name + " hits " + this.name + "!", "red");
+      }
       if (this.lives == 1) {
         log(this.name + " is on their last breath!", "#8B0000");
       }
@@ -668,43 +725,92 @@ class Player {
     keyMap[89] = 7;
     //Action keys
     keyMap[188] = 8;
+    keyMap[87] = 8;
     keyMap[81] = 8;
     keyMap[65] = 8;
     keyMap[83] = 8;
     keyMap[68] = 8;
+    keyMap[69] = 8;
     keyMap[70] = 8;
-    if (this.passives.includes("Sapper")) {
+    if (
+      this.passives.includes("Sapper") ||
+      this.passives.includes("Appraise")
+    ) {
       keyMap[82] = 8;
     }
-
     var code = e.keyCode;
-
+    if (
+      throwing &&
+      throwingIndex === undefined &&
+      ![65, 83, 68, 70].includes(code)
+    ) {
+      throwing = false;
+      throwingIndex = undefined;
+      log("Nevermind.", "white");
+      return;
+    } else if (
+      throwing &&
+      throwingIndex !== undefined &&
+      ![
+        38, 33, 39, 34, 40, 35, 37, 36, 75, 85, 76, 78, 74, 66, 72, 89,
+      ].includes(code)
+    ) {
+      throwing = false;
+      throwingIndex = undefined;
+      log("Nevermind.", "white");
+      return;
+    }
     if (!(code in keyMap)) {
       return;
     }
     if (code === 82) {
+      let action = false;
       if (this.passives.includes("Sapper") && this.ground === "⬛️") {
         log(this.name + " digs a hole!", "gold");
         this.beasthoodDown(Infinity);
         this.ground = "🕳️";
-        window.removeEventListener("keydown", this);
-        engine.unlock();
-        return;
+        action = true;
       } else if (this.passives.includes("Sapper") && this.ground !== "⬛️") {
-        log(this.name + " can't dig if stuff is on the floor", "F0E68C");
-        return;
+        log(this.name + " can't dig if stuff is on the floor", "#F0E68C");
       }
-    }
-    if (code === 81) {
-      if (player.useGround()) {
-        this.beasthoodDown(1);
+      if (this.passives.includes("Appraise")) {
+        if (player.inventory.length > 0) {
+          var randomIndex = Math.floor(Math.random() * player.inventory.length);
+          var randomFruit = player.inventory[randomIndex];
+          log(
+            this.name +
+              " appraises the " +
+              fruitNames[randomFruit] +
+              "! It's a fruit of " +
+              eatFruit[randomFruit].name +
+              "!",
+            "gold"
+          );
+          this.beasthoodDown(2);
+          action = true;
+        } else {
+          log(this.name + " has nothing to appraise", "#F0E68C");
+        }
+      }
+      if (action) {
         window.removeEventListener("keydown", this);
         engine.unlock();
         return;
       }
       return;
     }
-    if (code === 188) {
+    if (code === 81) {
+      if (player.useGround()) {
+        this.beasthoodDown(1);
+        if (!this.passives.includes("Fast paws")) {
+          window.removeEventListener("keydown", this);
+          engine.unlock();
+        }
+        return;
+      }
+      return;
+    }
+    if (code === 188 || code === 87) {
       // If the comma key is pressed, pass the turn
       window.removeEventListener("keydown", this);
       if (player.passives.includes("On fire")) {
@@ -720,48 +826,106 @@ class Player {
       engine.unlock();
       return;
     }
+    if (code === 69) {
+      if (player.inventory.length > 0) {
+        throwing = true;
+        log("Select an item to throw", "white");
+      } else {
+        log(this.name + " has nothing to throw", "#F0E68C");
+      }
+      return;
+    }
     if (code === 65) {
       if (player.inventory.length > 0) {
+        if (throwing) {
+          throwingIndex = 0;
+          log(
+            "Select a direction to throw the " +
+              fruitNames[player.inventory[0]],
+            "white"
+          );
+          return;
+        }
         eat(player, player.inventory[0]);
         player.inventory.splice(0, 1);
-        this.beasthoodDown(1);
-        window.removeEventListener("keydown", this);
-        engine.unlock();
+        if (!this.passives.includes("Fast paws")) {
+          this.beasthoodDown(1);
+          window.removeEventListener("keydown", this);
+          engine.unlock();
+        }
         return;
       }
+      log(this.name + " has nothing there", "#F0E68C");
       return;
     }
     if (code === 83) {
       if (player.inventory.length > 1) {
+        if (throwing) {
+          throwingIndex = 1;
+          log(
+            "Select a direction to throw the " +
+              fruitNames[player.inventory[1]],
+            "white"
+          );
+          return;
+        }
         eat(player, player.inventory[1]);
         player.inventory.splice(1, 1);
-        this.beasthoodDown(1);
-        window.removeEventListener("keydown", this);
-        engine.unlock();
+        if (!this.passives.includes("Fast paws")) {
+          this.beasthoodDown(1);
+          window.removeEventListener("keydown", this);
+          engine.unlock();
+        }
         return;
       }
+      log(this.name + " has nothing there", "#F0E68C");
       return;
     }
     if (code === 68) {
       if (player.inventory.length > 2) {
+        if (throwing) {
+          throwingIndex = 2;
+          log(
+            "Select a direction to throw the " +
+              fruitNames[player.inventory[2]],
+            "white"
+          );
+          return;
+        }
         eat(player, player.inventory[2]);
         player.inventory.splice(2, 1);
-        this.beasthoodDown(1);
-        window.removeEventListener("keydown", this);
-        engine.unlock();
+        if (!this.passives.includes("Fast paws")) {
+          this.beasthoodDown(1);
+          window.removeEventListener("keydown", this);
+          engine.unlock();
+        }
         return;
       }
+      log(this.name + " has nothing there", "#F0E68C");
       return;
     }
     if (code === 70) {
       if (player.inventory.length > 3) {
+        if (throwing) {
+          throwingIndex = 3;
+          log(
+            "Select a direction to throw the " +
+              fruitNames[player.inventory[3]],
+            "white"
+          );
+          return;
+        }
         eat(player, player.inventory[3]);
         player.inventory.splice(3, 1);
         this.beasthoodDown(1);
-        window.removeEventListener("keydown", this);
-        engine.unlock();
+        if (!this.passives.includes("Fast paws")) {
+          this.beasthoodDown(1);
+          window.removeEventListener("keydown", this);
+          engine.unlock();
+        }
         return;
       }
+      log(this.name + " has nothing there", "#F0E68C");
       return;
     }
     var confusion = false;
@@ -774,6 +938,14 @@ class Player {
     }
     var newX = this._x + diff[0];
     var newY = this._y + diff[1];
+    if (throwingIndex !== undefined) {
+      this.throwFruit(player.inventory[throwingIndex], keyMap[code]);
+      throwing = false;
+      throwingIndex = undefined;
+      window.removeEventListener("keydown", this);
+      engine.unlock();
+      return;
+    }
     const newKey = newX + "," + newY;
 
     if (generatedMap[newKey] === "🟫") {
@@ -842,6 +1014,38 @@ class Player {
     this.beasthoodUp(1);
     enemy.beHit(player);
   }
+
+  throwFruit(fruit, direction, x = this._x, y = this._y) {
+    var newX = x + ROT.DIRS[8][direction][0];
+    var newY = y + ROT.DIRS[8][direction][1];
+    var newKey = newX + "," + newY;
+    if (generatedMap[newKey] === "⬛️") {
+      return this.throwFruit(fruit, direction, newX, newY);
+    } else {
+      if (generatedMap[newKey] === "🟫") {
+        log("The " + fruitNames[fruit] + " hits a wall!", "#EE82EE");
+      }
+      var hitEnemy = false;
+      enemies.forEach((enemy) => {
+        if (enemy.x === newX && enemy.y === newY && enemy.lives > 0) {
+          eat(enemy, fruit);
+          if (player.passives.includes("On fire")) {
+            player.burn();
+          }
+          hitEnemy = true;
+          return;
+        }
+      });
+      if (!hitEnemy) {
+        generatedMap[newKey] = fruit;
+      }
+      // Remove the thrown fruit from the player's inventory
+      const index = this.inventory.indexOf(fruit);
+      if (index !== -1) {
+        this.inventory.splice(index, 1);
+      }
+    }
+  }
 }
 
 function createPlayer() {
@@ -852,13 +1056,20 @@ function createPlayer() {
   var y = parseInt(parts[1]);
   switch (selectedAnimal) {
     case "🐶":
-      player = new Player(x, y, "🐶", 3);
+      player = new Player(x, y);
       break;
     case "🐱":
       player = new Player(x, y, "🐱", 2, "Mimi", 2, [], [], 3, 5, 0, [
         "Pounce",
         "Luck mastery",
         "Many lives",
+      ]);
+      break;
+    case "🦝":
+      player = new Player(x, y, "🦝", 3, "Max", 3, [], ["Pickup"], 2, 5, 0, [
+        "Appraise",
+        "Throwing Splash",
+        "Fast paws",
       ]);
       break;
     default:
@@ -891,7 +1102,8 @@ class Enemy {
     maxLives = 2,
     name = "goblin",
     toHit = 3,
-    speed = 2
+    speed = 2,
+    passives = []
   ) {
     this._x = x;
     this._y = y;
@@ -905,6 +1117,9 @@ class Enemy {
     this.path = [];
     this.ground = "⬛️";
     this.speed = speed;
+    this.defaultSpeed = speed;
+    this.passives = passives;
+    this.tempEffects = [];
     enemies.push(this);
   }
   get x() {
@@ -922,14 +1137,22 @@ class Enemy {
   }
   beHit(attacker) {
     let rollValue = d6();
-    if (attacker.passives.includes("PlusOne")) {
-      rollValue += 1;
-    }
     if (
       attacker.passives.includes("TwoWeapon") ||
-      attacker.passives.includes("Weak")
+      attacker.passives.includes("Weak") ||
+      attacker.passives.includes("Innacuracy")
     ) {
       rollValue = Math.min(d6(), d6());
+    }
+    if (this.passives.includes("Thick Skin")) {
+      rollValue -= 1;
+    }
+    if (
+      attacker.passives.includes("PlusOne") ||
+      attacker.passives.includes("Keen Eyes") ||
+      this.passives.includes("Soft skin")
+    ) {
+      rollValue += 1;
     }
     if (
       attacker.passives.includes("Luck mastery") &&
@@ -1032,13 +1255,37 @@ class Enemy {
     }
   }
   act() {
+    if (this.passives.includes("Confused")) {
+      const dir = Math.floor(ROT.RNG.getUniform() * 8);
+      const newX = this._x + ROT.DIRS[8][dir][0];
+      const newY = this._y + ROT.DIRS[8][dir][1];
+      const key = newX + "," + newY;
+      if (
+        newX >= 0 &&
+        newX < 50 &&
+        newY >= 0 &&
+        newY < 50 &&
+        generatedMap[key] !== "🟫" && // Check if the new position is not a wall
+        !enemies.some(
+          (enemy) => enemy._x === newX && enemy._y === newY && enemy !== this
+        ) && // Check if the new position does not have another enemy
+        !(player.x === newX && player.y === newY) // Check if the new position is not occupied by the player
+      ) {
+        generatedMap[this._x + "," + this._y] = this.ground;
+        this.ground = generatedMap[key];
+        this._x = newX;
+        this._y = newY;
+        this._draw();
+      }
+      this.tempTick();
+      return;
+    }
     var x = player.x;
     var y = player.y;
     var passableCallback = (x, y) => {
       const key = x + "," + y;
       return (
         generatedMap[key] !== "🟫" &&
-        generatedMap[key] !== "📦" &&
         !enemies.some(
           (enemy) => enemy._x === x && enemy._y === y && enemy !== this
         )
@@ -1062,6 +1309,24 @@ class Enemy {
         this._x = nextStep[0];
         this._y = nextStep[1];
         this._draw();
+      }
+      this.tempTick();
+    }
+  }
+  tempTick() {
+    for (let key in this.tempEffects) {
+      // Access the key and value of the dictionary
+      this.tempEffects[key] -= 1;
+      if (this.tempEffects[key] <= 0) {
+        if (key === "Hasted" || key === "Slowed") {
+          this.speed = this.defaultSpeed;
+        }
+        delete this.tempEffects[key];
+        const passiveIndex = this.passives.indexOf(key);
+        if (passiveIndex !== -1) {
+          this.passives.splice(passiveIndex, 1);
+          log(this.name + " is no longer affected by " + key, "SkyBlue");
+        }
       }
     }
   }
@@ -1116,6 +1381,9 @@ function App() {
     initializeGame();
     log("Game started!", "#32CD32");
     beasthood(player);
+    player.inventory.push(
+      Object.keys(eatFruit).find((key) => eatFruit[key] === healing)
+    );
     setAnimalSelected(true);
   };
 
@@ -1160,6 +1428,15 @@ function App() {
             }}
           >
             🐱
+          </div>
+          <div
+            className="animalGridItem"
+            onClick={() => {
+              selectedAnimal = "🦝";
+              selectAnimal();
+            }}
+          >
+            🦝
           </div>
         </div>
         <button onClick={selectAnimal}>Select</button>
