@@ -1,3 +1,14 @@
+@font-face {
+  font-family: "EnterCommand";
+  src: url("/assets/fonts/EnterCommand-Bold.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+body {
+  font-family: "EnterCommand";
+}
+
 .ui {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -7,8 +18,8 @@
     "a a b"
     "c c b";
   background-color: #444;
-  width: 690px; /* Set a fixed width */
-  height: 670px; /* Set a fixed height */
+  width: 620px; /* Set a fixed width */
+  height: 620px; /* Set a fixed height */
 }
 
 .map {
@@ -16,7 +27,7 @@
   grid-area: a;
   width: auto;
   height: auto; /* Set a fixed height for the map container */
-  padding: 10px;
+  padding: 5px;
 }
 
 .map-row {
@@ -24,18 +35,24 @@
 }
 
 .map-square {
-  width: var(--square-size, 20px);
-  height: var(--square-size, 20px);
+  width: 20px;
+  height: 20px;
   display: inline-block;
-  font-size: 20px; /* Adjust the font size as needed */
+  font-size: 16px; /* Adjust the font size as needed */
   font-family: monospace;
 }
 
-.inventory {
+.log {
   grid-area: b;
-  background-color: #555;
+  background-color: #111;
   height: auto;
   width: auto;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.logText {
+  font-size: 24px;
 }
 
 .bottomUi {
@@ -58,34 +75,121 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  font-family: "Jersey 10", sans-serif;
-  font-weight: 400;
+  font-weight: 500;
   font-style: normal;
   color: white;
   font-size: 32px;
   padding: 2.5px;
-  padding-left: 10px;
+}
+
+.luckContainer {
+  grid-column: 2;
+  grid-row: 1;
+  background-color: #aaa;
+  height: auto;
+  width: auto;
+  font-weight: 500;
+  font-style: normal;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* Align the luck text with the hearts */
+  font-size: 24px; /* Adjust the font size as needed */
+  padding: 2.5px;
+}
+
+.beasthoodContainer {
+  grid-column: 3;
+  grid-row: 1;
+  background-color: #aaa;
+  height: auto;
+  width: auto;
+  font-weight: 500;
+  font-style: normal;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* Align the luck text with the hearts */
+  font-size: 24px; /* Adjust the font size as needed */
+  padding: 2.5px;
 }
 
 .scoreKeep {
-  grid-column: 2 / span 2;
+  grid-column: 3;
   grid-row: 1;
   background-color: #888;
   height: auto;
   width: auto;
-  font-family: "Jersey 10", sans-serif;
   font-weight: 500;
   font-style: normal;
   color: white;
 }
 
-.log {
-  grid-column: 1 / span 3;
-  grid-row: 2 / span 2;
+.equipView {
+  grid-column: 1;
+  grid-row: 2;
+  background-color: #bbb;
+  height: auto;
+  width: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 500;
+  font-style: normal;
+  color: white;
+  font-size: 32px;
+  padding: 2.5px;
+}
+
+.groundView {
+  grid-column: 1;
+  grid-row: 3;
   background-color: #999;
   height: auto;
   width: auto;
-  overflow-y: scroll;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-weight: 500;
+  font-style: normal;
+  color: white;
+  font-size: 32px;
+  padding: 2.5px;
+}
+
+.inventoryGrid {
+  grid-row: 2;
+  grid-column: 2;
+  height: auto;
+  width: auto;
+  display: grid;
+  background-color: #ccc;
+  justify-content: baseline;
+  align-items: center;
+  font-size: 16px;
+  padding: 2.5px;
+}
+
+.inventoryView {
+  height: auto;
+  width: auto;
+  display: flex;
+  background-color: #ccc;
+  justify-content: center;
+  align-items: center;
+  padding: 2.5px;
+  color: white;
+  gap: 5px;
+}
+
+.inventoryView > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 19px;
 }
 
 @keyframes final-heartbeat {
@@ -130,5 +234,4 @@
 
 .shake {
   animation: shake 0.2s;
-  filter: brightness(100%) saturate(100%) hue-rotate(320deg);
 }
