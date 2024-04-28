@@ -7,7 +7,6 @@ let engine = null;
 let scheduler = null;
 let MAX_LOG_SIZE = 10;
 let MAX_INVENTORY_SIZE = 4;
-let MAX_LEVEL = 4;
 let MAX_BEASTHOOD = 16;
 let TO_LEVEL_2 = 4;
 let TO_LEVEL_3 = 8;
@@ -1208,5 +1207,4 @@ function App() {
 initializeGame();
 console.log(eatFruit);
 log("Game started!", "#32CD32");
-beasthood(player);
 export default App;
