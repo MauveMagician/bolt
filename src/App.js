@@ -5,8 +5,13 @@ import "./App.css";
 let player = null;
 let engine = null;
 let scheduler = null;
-let MAX_LOG_SIZE = 12;
+let MAX_LOG_SIZE = 10;
 let MAX_INVENTORY_SIZE = 4;
+let MAX_LEVEL = 4;
+let MAX_BEASTHOOD = 16;
+let TO_LEVEL_2 = 4;
+let TO_LEVEL_3 = 8;
+let TO_LEVEL_4 = 16;
 const generatedMap = {};
 const freeCells = [];
 const enemies = [];
@@ -155,7 +160,7 @@ function haste(eater) {
     eater.passives.splice(eater.passives.indexOf("Slowed"), 1);
     delete eater.tempEffects["Slowed"];
     log(eater.name + " is no longer slow!", "#00FFFF");
-    eater.speed = 2;
+    eater.speed = eater.defaultSpeed;
     return;
   }
   eater.passives.push("Hasted");
@@ -194,7 +199,7 @@ function slowing(eater) {
     eater.passives.splice(eater.passives.indexOf("Hasted"), 1);
     delete eater.tempEffects["Hasted"];
     log(eater.name + " is no longer hasted!", "#00FFFF");
-    eater.speed = 2;
+    eater.speed = eater.defaultSpeed;
     return;
   }
   eater.passives.push("Slowed");
@@ -219,7 +224,8 @@ function weakness(eater) {
   log(eater.name + " becomes weakened for " + duration + " turns!", "#8B0000");
 }
 function beasthood(eater) {
-  log(eater.name + " experiences the effect of Beasthood", "blue");
+  log(eater.name + " unleashes their instincts!", "#DC143C");
+  eater.beasthoodUp(16);
 }
 function cancellation(eater) {
   if (Object.keys(eater.tempEffects).length === 0) {
@@ -289,8 +295,11 @@ class Player {
     inventory = [],
     passives = [],
     speed = 2,
-    luck = 3,
-    maxLuck = 3
+    luck = 4,
+    maxLuck = 4,
+    level = 1,
+    minBeasthood = 0,
+    levelBenefits = ["Digger", "Attack dog", "Sapper"]
   ) {
     this._x = x;
     this._y = y;
@@ -307,8 +316,13 @@ class Player {
     this.passives = passives;
     this.tempEffects = {};
     this.speed = speed;
+    this.defaultSpeed = speed;
     this.luck = luck;
     this.maxLuck = maxLuck;
+    this.level = level;
+    this.beasthood = minBeasthood;
+    this.minBeasthood = minBeasthood;
+    this.levelBenefits = levelBenefits;
     this._draw();
   }
 
@@ -328,12 +342,87 @@ class Player {
     return this.speed;
   }
 
+  beasthoodUp(value) {
+    if (this.beasthood < MAX_BEASTHOOD) {
+      this.beasthood += value;
+      if (this.beasthood > MAX_BEASTHOOD) {
+        this.beasthood = MAX_BEASTHOOD;
+      }
+      if (this.beasthood >= TO_LEVEL_4 && this.level < 4) {
+        log(this.name + " advances to level 4!", "#FF69B4");
+        this.level = 4;
+        this.passives.push(this.levelBenefits[2]);
+        if (!this.passives.includes(this.levelBenefits[1])) {
+          this.passives.push(this.levelBenefits[1]);
+        }
+        if (!this.passives.includes(this.levelBenefits[0])) {
+          this.passives.push(this.levelBenefits[0]);
+        }
+      } else if (this.beasthood >= TO_LEVEL_3 && this.level < 3) {
+        log(this.name + " advances to level 3!", "#FF69B4");
+        this.level = 3;
+        this.passives.push(this.levelBenefits[1]);
+        if (!this.passives.includes(this.levelBenefits[0])) {
+          this.passives.push(this.levelBenefits[0]);
+        }
+      } else if (this.beasthood >= TO_LEVEL_2 && this.level < 2) {
+        log(this.name + " advances to level 2!", "#FF69B4");
+        this.level = 2;
+        this.passives.push(this.levelBenefits[0]);
+      }
+    }
+  }
+
+  beasthoodDown(value) {
+    if (this.beasthood > 0) {
+      this.beasthood -= value;
+      if (this.beasthood < 0) {
+        this.beasthood = 0;
+      }
+      if (this.beasthood < TO_LEVEL_2 && this.level > 1) {
+        log(this.name + " regresses to level 1!", "#FF7F50");
+        this.level = 1;
+        let index = this.passives.indexOf(this.levelBenefits[0]);
+        if (index !== -1) {
+          this.passives.splice(index, 1);
+        }
+        index = this.passives.indexOf(this.levelBenefits[1]);
+        if (index !== -1) {
+          this.passives.splice(index, 1);
+        }
+        index = this.passives.indexOf(this.levelBenefits[2]);
+        if (index !== -1) {
+          this.passives.splice(index, 1);
+        }
+      } else if (this.beasthood < TO_LEVEL_3 && this.level > 2) {
+        log(this.name + " regresses to level 2!", "#FF7F50");
+        this.level = 2;
+        let index = this.passives.indexOf(this.levelBenefits[1]);
+        if (index !== -1) {
+          this.passives.splice(index, 1);
+        }
+        index = this.passives.indexOf(this.levelBenefits[2]);
+        if (index !== -1) {
+          this.passives.splice(index, 1);
+        }
+      } else if (this.beasthood < TO_LEVEL_4 && this.level > 3) {
+        log(this.name + " regresses to level 3!", "#FF7F50");
+        this.level = 3;
+        let index = this.passives.indexOf(this.levelBenefits[2]);
+        if (index !== -1) {
+          this.passives.splice(index, 1);
+        }
+      }
+    }
+  }
+
   beHit(enemy) {
     if (this.passives.includes("Invulnerable")) {
       log(this.name + " shrugs off the " + enemy.name + "'s attack", "#B0C4DE");
       return;
     }
     const rollValue = d6();
+    this.beasthoodUp(1);
     if (rollValue >= this.toHit) {
       this.lives -= 1;
       log("The " + enemy.name + " hits " + this.name + "!", "red");
@@ -453,6 +542,7 @@ class Player {
   }
 
   act() {
+    log(this.passives, "white");
     if (this.passives.includes("Asleep")) {
       log(this.name + " is asleep", "red");
     } else {
@@ -465,7 +555,7 @@ class Player {
       player.tempEffects[key] -= 1;
       if (player.tempEffects[key] <= 0) {
         if (key === "Hasted" || key === "Slowed") {
-          this.speed = 2;
+          this.speed = this.defaultSpeed;
         }
         delete player.tempEffects[key];
         const passiveIndex = player.passives.indexOf(key);
@@ -505,15 +595,31 @@ class Player {
     keyMap[83] = 8;
     keyMap[68] = 8;
     keyMap[70] = 8;
+    if (this.passives.includes("Sapper")) {
+      keyMap[82] = 8;
+    }
 
     var code = e.keyCode;
 
     if (!(code in keyMap)) {
       return;
     }
-
+    if (code === 82) {
+      if (this.passives.includes("Sapper") && this.ground === "⬛️") {
+        log(this.name + " digs a hole!", "gold");
+        this.beasthoodDown(Infinity);
+        this.ground = "🕳️";
+        window.removeEventListener("keydown", this);
+        engine.unlock();
+        return;
+      } else if (this.passives.includes("Sapper") && this.ground !== "⬛️") {
+        log(this.name + " can't dig if stuff is on the floor", "F0E68C");
+        return;
+      }
+    }
     if (code === 81) {
       if (player.useGround()) {
+        this.beasthoodDown(1);
         window.removeEventListener("keydown", this);
         engine.unlock();
         return;
@@ -526,11 +632,12 @@ class Player {
       if (player.passives.includes("On fire")) {
         player.tempEffects["On fire"] = 0;
       }
-      if (this.luck < Math.floor(this.maxLuck / 2)) {
-        this.luck = Math.floor(this.maxLuck / 2);
-      }
-      if (this.luck > this.maxLuck) {
-        this.luck = this.maxLuck;
+      if (this.luck < this.maxLuck) {
+        this.beasthoodDown(1); // Decrease beasthood by 1
+        this.luck += 1;
+        this.luck = Math.min(this.maxLuck, this.luck);
+      } else {
+        this.beasthoodDown(1);
       }
       engine.unlock();
       return;
@@ -539,6 +646,7 @@ class Player {
       if (player.inventory.length > 0) {
         eat(player, player.inventory[0]);
         player.inventory.splice(0, 1);
+        this.beasthoodDown(1);
         window.removeEventListener("keydown", this);
         engine.unlock();
         return;
@@ -549,6 +657,7 @@ class Player {
       if (player.inventory.length > 1) {
         eat(player, player.inventory[1]);
         player.inventory.splice(1, 1);
+        this.beasthoodDown(1);
         window.removeEventListener("keydown", this);
         engine.unlock();
         return;
@@ -559,6 +668,7 @@ class Player {
       if (player.inventory.length > 2) {
         eat(player, player.inventory[2]);
         player.inventory.splice(2, 1);
+        this.beasthoodDown(1);
         window.removeEventListener("keydown", this);
         engine.unlock();
         return;
@@ -569,6 +679,7 @@ class Player {
       if (player.inventory.length > 3) {
         eat(player, player.inventory[3]);
         player.inventory.splice(3, 1);
+        this.beasthoodDown(1);
         window.removeEventListener("keydown", this);
         engine.unlock();
         return;
@@ -579,7 +690,7 @@ class Player {
     if (player.passives.includes("Confused") && Math.random() < 0.5) {
       var diff = ROT.DIRS[8][Math.floor(Math.random() * 7) + 1];
       confusion = true;
-      log(this.name + " moved randomly due to confusion", "#FF00FF");
+      log(this.name + " moves randomly due to confusion", "#FF00FF");
     } else {
       var diff = ROT.DIRS[8][keyMap[code]];
     }
@@ -594,6 +705,18 @@ class Player {
         if (player.passives.includes("On fire")) {
           player.burn();
         }
+        engine.unlock();
+      }
+      if (
+        this.passives.includes("Digger") &&
+        newX != 0 &&
+        newY != 0 &&
+        newX != 49 &&
+        newY != 49
+      ) {
+        this.beasthoodDown(1);
+        generatedMap[newKey] = "⬛";
+        window.removeEventListener("keydown", this);
         engine.unlock();
       }
       return; // Can't move into a wall
@@ -622,11 +745,13 @@ class Player {
       if (player.passives.includes("On fire")) {
         player.burn();
       }
+      this.beasthoodDown(1);
       engine.unlock();
     }
   }
 
   attack(enemy) {
+    this.beasthoodUp(1);
     enemy.beHit(player);
   }
 }
@@ -637,7 +762,7 @@ function createPlayer() {
   var parts = key.split(",");
   var x = parseInt(parts[0]);
   var y = parseInt(parts[1]);
-  player = new Player(x, y, "🐶", 3);
+  player = new Player(x, y, "🐶", 99);
 }
 
 function generateBoxes() {
@@ -715,7 +840,8 @@ class Enemy {
     if (rollValue >= this.toHit) {
       if (
         (attacker.passives.includes("Mighty") ||
-          attacker.passives.includes("TwoWeapon")) &&
+          attacker.passives.includes("TwoWeapon") ||
+          attacker.passives.includes("Attack dog")) &&
         !attacker.passives.includes("Weak")
       ) {
         this.lives -= 2;
@@ -727,7 +853,8 @@ class Enemy {
         this.die();
       } else if (
         (attacker.passives.includes("Mighty") ||
-          attacker.passives.includes("TwoWeapon")) &&
+          attacker.passives.includes("TwoWeapon") ||
+          attacker.passives.includes("Attack dog")) &&
         !attacker.passives.includes("Weak")
       ) {
         log(
@@ -748,6 +875,7 @@ class Enemy {
       log("Critical hit!", "#FFD700");
       if (this.lives > 0) {
         log(attacker.name + " makes an extra attack!", "#FFD700");
+        attacker.beasthoodUp(1);
         this.beHit(attacker);
       } else {
         const attackerX = attacker.x;
@@ -776,6 +904,7 @@ class Enemy {
             ) {
               log(attacker.name + " makes an extra attack!", "#FFD700");
               enemy.beHit(attacker);
+              attacker.beasthoodUp(1);
               return;
             }
           });
@@ -965,8 +1094,26 @@ function App() {
     );
   };
 
-  function renderScoreKeep() {
-    return <div className="scoreKeep">Score: {player.score}</div>;
+  function renderBeasthoodContainer() {
+    let beasthoodValue = player.beasthood;
+    if (player.level === 1) {
+      beasthoodValue = 4;
+    } else if (player.level === 2) {
+      beasthoodValue = 8;
+    } else if (player.level === 3) {
+      beasthoodValue = 16;
+    }
+
+    const beasthoodDisplay =
+      player.beasthood === 16 ? "MAX" : `${player.beasthood}/${beasthoodValue}`;
+
+    return (
+      <div className="beasthoodContainer">
+        <div>
+          Beast L{player.level} {beasthoodDisplay}
+        </div>
+      </div>
+    );
   }
 
   function renderLuckContainer() {
@@ -1047,7 +1194,7 @@ function App() {
         <div className="bottomUi">
           {renderLivesContainer()}
           {renderLuckContainer()}
-          {renderScoreKeep()}
+          {renderBeasthoodContainer()}
           {renderEquipView()}
           {renderInventoryView()}
           {renderGroundView()}
@@ -1061,4 +1208,5 @@ function App() {
 initializeGame();
 console.log(eatFruit);
 log("Game started!", "#32CD32");
+beasthood(player);
 export default App;
