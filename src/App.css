@@ -10,6 +10,51 @@ body {
   color: white;
 }
 
+.startScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #222222;
+  color: white;
+}
+
+.startScreen h1 {
+  font-size: 42px;
+  margin-bottom: 5px;
+}
+
+.versionInfo {
+  margin: 0px;
+  margin-bottom: 20px;
+}
+
+.startScreen button {
+  font-family: "EnterCommand";
+  padding: 10px 20px;
+  font-size: 2rem;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background-color 0.3s;
+}
+
+.startScreen button:hover {
+  background-color: #45a049;
+}
+
+.startScreen a {
+  margin-top: 20px;
+  color: #4caf50;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.startScreen a:hover {
+  color: #45a049;
+}
+
 .animalSelectionScreen {
   text-align: center;
   font-size: 32px;

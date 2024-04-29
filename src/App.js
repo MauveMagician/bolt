@@ -1415,7 +1415,6 @@ function App() {
   const selectAnimal = () => {
     initializeGame();
     log("Game started!", "#32CD32");
-    beasthood(player);
     player.inventory.push(
       Object.keys(eatFruit).find((key) => eatFruit[key] === healing)
     );
@@ -1426,7 +1425,8 @@ function App() {
     if (!gameStarted) {
       return (
         <div className="startScreen">
-          <h1>Beasts of Labyrinth Tactics (BOLT)</h1>
+          <h1>Beasts of Labyrinth Tactics (BoLT)</h1>
+          <p className="versionInfo">Version.0.0 Alpha</p>
           <button onClick={startGame}>Game Start</button>
           <a
             href="https://your-donation-link.com"
@@ -1434,6 +1434,14 @@ function App() {
             rel="noopener noreferrer"
           >
             Donate
+          </a>
+          <a
+            href="https://www.patreon.com/your-patreon-link"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="patreonButton"
+          >
+            Patreon
           </a>
         </div>
       );
@@ -1445,7 +1453,7 @@ function App() {
     const animalInfo = (animal) => {
       switch (animal) {
         case "🐶":
-          return "Dog - A loyal and fierce companion.";
+          return "Dog - Loyal and fierce, with a talent for digging.";
         case "🐱":
           return "Cat - Agile and mysterious, with multiple lives.";
         case "🦝":
