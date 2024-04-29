@@ -10,6 +10,51 @@ body {
   color: white;
 }
 
+.startScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #222222;
+  color: white;
+}
+
+.startScreen h1 {
+  font-size: 42px;
+  margin-bottom: 5px;
+}
+
+.versionInfo {
+  margin: 0px;
+  margin-bottom: 20px;
+}
+
+.startScreen button {
+  font-family: "EnterCommand";
+  padding: 10px 20px;
+  font-size: 2rem;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background-color 0.3s;
+}
+
+.startScreen button:hover {
+  background-color: #45a049;
+}
+
+.startScreen a {
+  margin-top: 20px;
+  color: #4caf50;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.startScreen a:hover {
+  color: #45a049;
+}
+
 .animalSelectionScreen {
   text-align: center;
   font-size: 32px;
@@ -67,16 +112,20 @@ body {
 }
 
 .ui {
+  margin: 0 auto;
+  margin-top: 20px;
+  border-radius: 10px;
+  overflow: hidden;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 0.5fr;
   grid-template-areas:
     "a a b"
     "a a b"
     "c c b";
   background-color: #444;
   width: 620px; /* Set a fixed width */
-  height: 620px; /* Set a fixed height */
+  height: 525px; /* Set a fixed height */
 }
 
 .map {
@@ -114,18 +163,17 @@ body {
 
 .bottomUi {
   grid-area: c;
-  background-color: #666;
+  background-color: #444;
   height: auto;
   width: auto;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
 }
 
 .livesContainer {
   grid-column: 1;
   grid-row: 1;
-  background-color: #777;
   height: auto;
   width: auto;
   display: flex;
@@ -142,7 +190,6 @@ body {
 .luckContainer {
   grid-column: 2;
   grid-row: 1;
-  background-color: #aaa;
   height: auto;
   width: auto;
   font-weight: 500;
@@ -159,7 +206,6 @@ body {
 .beasthoodContainer {
   grid-column: 3;
   grid-row: 1;
-  background-color: #aaa;
   height: auto;
   width: auto;
   font-weight: 500;
@@ -176,7 +222,6 @@ body {
 .scoreKeep {
   grid-column: 3;
   grid-row: 1;
-  background-color: #888;
   height: auto;
   width: auto;
   font-weight: 500;
@@ -187,7 +232,6 @@ body {
 .equipView {
   grid-column: 1;
   grid-row: 2;
-  background-color: #bbb;
   height: auto;
   width: auto;
   display: flex;
@@ -201,9 +245,8 @@ body {
 }
 
 .groundView {
-  grid-column: 1;
-  grid-row: 3;
-  background-color: #999;
+  grid-column: 3;
+  grid-row: 2;
   height: auto;
   width: auto;
   display: flex;
@@ -223,7 +266,6 @@ body {
   height: auto;
   width: auto;
   display: grid;
-  background-color: #ccc;
   justify-content: baseline;
   align-items: center;
   font-size: 16px;
@@ -234,7 +276,6 @@ body {
   height: auto;
   width: auto;
   display: flex;
-  background-color: #ccc;
   justify-content: center;
   align-items: center;
   padding: 2.5px;

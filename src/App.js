@@ -401,7 +401,7 @@ class Player {
     speed = 2,
     maxLuck = 4,
     minBeasthood = 0,
-    levelBenefits = ["Digger", "Mighty strikes", "Sapper"]
+    levelBenefits = ["Mighty strikes", "Digger", "Sapper"]
   ) {
     this._x = x;
     this._y = y;
@@ -1415,7 +1415,6 @@ function App() {
   const selectAnimal = () => {
     initializeGame();
     log("Game started!", "#32CD32");
-    beasthood(player);
     player.inventory.push(
       Object.keys(eatFruit).find((key) => eatFruit[key] === healing)
     );
@@ -1426,7 +1425,8 @@ function App() {
     if (!gameStarted) {
       return (
         <div className="startScreen">
-          <h1>Beasts of Labyrinth Tactics (BOLT)</h1>
+          <h1>Beasts of Labyrinth Tactics (BoLT)</h1>
+          <p className="versionInfo">Version 1.0.0 Alpha</p>
           <button onClick={startGame}>Game Start</button>
           <a
             href="https://your-donation-link.com"
@@ -1435,6 +1435,15 @@ function App() {
           >
             Donate
           </a>
+          <a
+            href="https://www.patreon.com/your-patreon-link"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="patreonButton"
+          >
+            Patreon
+          </a>
+          <p>ATTRIBUTION CREDITS: Enter Command font is made by jeti</p>
         </div>
       );
     }
@@ -1445,7 +1454,7 @@ function App() {
     const animalInfo = (animal) => {
       switch (animal) {
         case "🐶":
-          return "Dog - A loyal and fierce companion.";
+          return "Dog - Loyal and fierce, with a talent for digging.";
         case "🐱":
           return "Cat - Agile and mysterious, with multiple lives.";
         case "🦝":
@@ -1595,7 +1604,10 @@ function App() {
     ));
 
     return (
-      <div className="livesContainer">
+      <div
+        className="livesContainer"
+        title="Champion lives. You lose if they ever run out."
+      >
         <div style={{ display: "inline-block", verticalAlign: "middle" }}>
           {hearts}
         </div>
@@ -1617,7 +1629,10 @@ function App() {
       player.beasthood === 16 ? "MAX" : `${player.beasthood}/${beasthoodValue}`;
 
     return (
-      <div className="beasthoodContainer">
+      <div
+        className="beasthoodContainer"
+        title="Champion beasthood. Attack and be attacked to gain points and go up levels. Champions unlock abilities as they level up. Walking and other actions reduce beasthood points. Passing the turn converts beasthood points into luck."
+      >
         <div>
           Beast L{player.level} {beasthoodDisplay}
         </div>
@@ -1627,7 +1642,10 @@ function App() {
 
   function renderLuckContainer() {
     return (
-      <div className="luckContainer">
+      <div
+        className="luckContainer"
+        title="Champion luck. It's spent as needed to give your champion a slight edge in combat."
+      >
         <div>
           Luck {player.luck}/{player.maxLuck}
         </div>
@@ -1637,7 +1655,10 @@ function App() {
 
   function renderGroundView() {
     return (
-      <div className="groundView">
+      <div
+        className="groundView"
+        title="Ground view. What your champion is standing on can be seen here."
+      >
         <div>{player.ground}</div>
       </div>
     );
@@ -1645,7 +1666,10 @@ function App() {
 
   function renderEquipView() {
     return (
-      <div className="equipView">
+      <div
+        className="equipView"
+        title="Equip view. Your equipment can be seen here."
+      >
         <div>{player.wield}</div>
         <div>{player.wear}</div>
       </div>
@@ -1654,7 +1678,10 @@ function App() {
 
   function renderInventoryView() {
     return (
-      <div className="inventoryGrid">
+      <div
+        className="inventoryGrid"
+        title="Inventory. Press the corresponding key to use the item."
+      >
         <div className="inventoryView">
           {player.inventory[0] && (
             <div>
@@ -1687,7 +1714,10 @@ function App() {
 
   const renderLog = () => {
     return (
-      <div className="log">
+      <div
+        className="log"
+        title="Game log. The last 10 game events are registered here."
+      >
         {logContents.map((message, index) => (
           <div key={index}>{message}</div>
         ))}
