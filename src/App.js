@@ -401,7 +401,7 @@ class Player {
     speed = 2,
     maxLuck = 4,
     minBeasthood = 0,
-    levelBenefits = ["Digger", "Attack dog", "Sapper"]
+    levelBenefits = ["Digger", "Mighty strikes", "Sapper"]
   ) {
     this._x = x;
     this._y = y;
@@ -523,11 +523,12 @@ class Player {
       log(this.name + " shrugs off the " + enemy.name + "'s attack", "#B0C4DE");
       return;
     }
-    const rollValue = d6();
+    let rollValue = d6();
     if (
       enemy.passives.includes("TwoWeapon") ||
       enemy.passives.includes("Weak") ||
-      enemy.passives.includes("Innacuracy")
+      enemy.passives.includes("Innacuracy") ||
+      this.passives.includes("Great defense")
     ) {
       rollValue = Math.min(d6(), d6());
     }
@@ -734,7 +735,8 @@ class Player {
     keyMap[70] = 8;
     if (
       this.passives.includes("Sapper") ||
-      this.passives.includes("Appraise")
+      this.passives.includes("Appraise") ||
+      this.passives.includes("Ultrasonic Blast")
     ) {
       keyMap[82] = 8;
     }
@@ -765,6 +767,20 @@ class Player {
     }
     if (code === 82) {
       let action = false;
+      if (this.passives.includes("Ultrasonic Blast")) {
+        log(this.name + " lets loose an ultrasonic blast!", "gold");
+        enemies.forEach((enemy) => {
+          if (
+            enemy.lives > 0 &&
+            Math.abs(this._x - enemy.x) <= 3 &&
+            Math.abs(this._y - enemy.y) <= 3
+          ) {
+            this.attack(enemy);
+          }
+        });
+        this.beasthoodDown(3);
+        action = true;
+      }
       if (this.passives.includes("Sapper") && this.ground === "⬛️") {
         log(this.name + " digs a hole!", "gold");
         this.beasthoodDown(Infinity);
@@ -1011,6 +1027,17 @@ class Player {
   }
 
   attack(enemy) {
+    const procRoll = d6();
+    if (procRoll >= 6) {
+      if (this.passives.includes("Pickup") && this.inventory.length < 4) {
+        const randomIndex = Math.floor(Math.random() * fruit.length);
+        this.inventory.push(fruit[randomIndex]);
+        log(
+          this.name + " pilfers a " + fruitNames[fruit[randomIndex]] + "!",
+          "#00FF00"
+        );
+      }
+    }
     this.beasthoodUp(1);
     enemy.beHit(player);
   }
@@ -1024,21 +1051,22 @@ class Player {
     } else {
       if (generatedMap[newKey] === "🟫") {
         log("The " + fruitNames[fruit] + " hits a wall!", "#EE82EE");
+        const key = x + "," + y;
+        if (generatedMap[key] === "⬛️") {
+          generatedMap[key] = fruit;
+        } else {
+          log("The " + fruitNames[fruit] + " goes splat!", "#EE82EE");
+        }
       }
-      var hitEnemy = false;
       enemies.forEach((enemy) => {
         if (enemy.x === newX && enemy.y === newY && enemy.lives > 0) {
           eat(enemy, fruit);
-          if (player.passives.includes("On fire")) {
-            player.burn();
+          if (player.passives.includes("Confuse throw")) {
+            confusion(enemy);
           }
-          hitEnemy = true;
           return;
         }
       });
-      if (!hitEnemy) {
-        generatedMap[newKey] = fruit;
-      }
       // Remove the thrown fruit from the player's inventory
       const index = this.inventory.indexOf(fruit);
       if (index !== -1) {
@@ -1068,8 +1096,15 @@ function createPlayer() {
     case "🦝":
       player = new Player(x, y, "🦝", 3, "Max", 3, [], ["Pickup"], 2, 5, 0, [
         "Appraise",
-        "Throwing Splash",
+        "Confuse throw",
         "Fast paws",
+      ]);
+      break;
+    case "🐋":
+      player = new Player(x, y, "🐋", 5, "Wave", 4, [], ["Aquatic"], 2, 4, 0, [
+        "Mighty strikes",
+        "Great defense",
+        "Ultrasonic Blast",
       ]);
       break;
     default:
@@ -1174,7 +1209,7 @@ class Enemy {
       if (
         (attacker.passives.includes("Mighty") ||
           attacker.passives.includes("TwoWeapon") ||
-          attacker.passives.includes("Attack dog")) &&
+          attacker.passives.includes("Mighty strikes")) &&
         !attacker.passives.includes("Weak")
       ) {
         this.lives -= 2;
@@ -1187,7 +1222,7 @@ class Enemy {
       } else if (
         (attacker.passives.includes("Mighty") ||
           attacker.passives.includes("TwoWeapon") ||
-          attacker.passives.includes("Attack dog")) &&
+          attacker.passives.includes("Mighty strikes")) &&
         !attacker.passives.includes("Weak")
       ) {
         log(
@@ -1437,6 +1472,15 @@ function App() {
             }}
           >
             🦝
+          </div>
+          <div
+            className="animalGridItem"
+            onClick={() => {
+              selectedAnimal = "🐋";
+              selectAnimal();
+            }}
+          >
+            🐋
           </div>
         </div>
         <button onClick={selectAnimal}>Select</button>
