@@ -1442,9 +1442,24 @@ function App() {
   };
 
   const renderAnimalSelectionScreen = () => {
+    const animalInfo = (animal) => {
+      switch (animal) {
+        case "🐶":
+          return "Dog - A loyal and fierce companion.";
+        case "🐱":
+          return "Cat - Agile and mysterious, with multiple lives.";
+        case "🦝":
+          return "Raccoon - Clever and resourceful, with a knack for finding items.";
+        case "🐋":
+          return "Whale - Powerful and resilient, with aquatic abilities.";
+        default:
+          return "";
+      }
+    };
+
     return (
       <div className="animalSelectionScreen">
-        <h2>Select Your Champion</h2>
+        <h2 className="selectYourChampion">Select Your Champion</h2>
         <div className="animalGrid">
           <div
             className="animalGridItem"
@@ -1454,6 +1469,7 @@ function App() {
             }}
           >
             🐶
+            <div className="animalInfo">{animalInfo("🐶")}</div>
           </div>
           <div
             className="animalGridItem"
@@ -1463,6 +1479,7 @@ function App() {
             }}
           >
             🐱
+            <div className="animalInfo">{animalInfo("🐱")}</div>
           </div>
           <div
             className="animalGridItem"
@@ -1472,6 +1489,7 @@ function App() {
             }}
           >
             🦝
+            <div className="animalInfo">{animalInfo("🦝")}</div>
           </div>
           <div
             className="animalGridItem"
@@ -1481,9 +1499,9 @@ function App() {
             }}
           >
             🐋
+            <div className="animalInfo">{animalInfo("🐋")}</div>
           </div>
         </div>
-        <button onClick={selectAnimal}>Select</button>
       </div>
     );
   };
