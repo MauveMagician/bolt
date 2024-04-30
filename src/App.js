@@ -7,7 +7,7 @@ let engine = null;
 let scheduler = null;
 let throwing = false;
 let throwingIndex = undefined;
-let MAX_LOG_SIZE = 10;
+let MAX_LOG_SIZE = 15;
 let MAX_INVENTORY_SIZE = 4;
 let MAX_BEASTHOOD = 16;
 let TO_LEVEL_2 = 4;
@@ -1686,25 +1686,25 @@ function App() {
           {player.inventory[0] && (
             <div>
               {player.inventory[0]}
-              <div>A</div>
+              <div className="inventoryLetter">A</div>
             </div>
           )}
           {player.inventory[1] && (
             <div>
               {player.inventory[1]}
-              <div>S</div>
+              <div className="inventoryLetter">S</div>
             </div>
           )}
           {player.inventory[2] && (
             <div>
               {player.inventory[2]}
-              <div>D</div>
+              <div className="inventoryLetter">D</div>
             </div>
           )}
           {player.inventory[3] && (
             <div>
               {player.inventory[3]}
-              <div>F</div>
+              <div className="inventoryLetter">F</div>
             </div>
           )}
         </div>
