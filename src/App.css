@@ -159,31 +159,6 @@ body {
   font-family: "Noto Color Emoji", "Segoe UI Emoji", monospace;
 }
 
-@media (min-width: 650px) {
-  .map-square {
-    font-size: 24px; /* Maximum font size for smaller screens */
-  }
-}
-
-@media (max-width: 800px) {
-  .ui {
-    display: block;
-    margin: 0 auto;
-    overflow: visible;
-  }
-  .ui .map {
-    margin: 0 auto;
-    margin: auto; /* Center the map within its grid area */
-    display: flex; /* Use flexbox to center content inside the map */
-    flex-direction: column;
-    justify-content: center; /* Center content horizontally */
-    align-items: center; /* Center content vertically */
-  }
-  .ui .bottomUi {
-    grid-template-columns: 1fr;
-  }
-}
-
 .log {
   grid-area: b;
   background-color: #111;
@@ -365,7 +340,32 @@ body {
   animation: shake 0.2s;
 }
 
-@media only screen and (orientation: landscape) and (min-aspect-ratio: 13/9) {
+@media (min-width: 650px) {
+  .map-square {
+    font-size: 24px; /* Maximum font size for smaller screens */
+  }
+}
+
+@media (max-width: 800px) {
+  .ui {
+    display: block;
+    margin: 0 auto;
+    overflow: visible;
+  }
+  .ui .map {
+    margin: 0 auto;
+    margin: auto; /* Center the map within its grid area */
+    display: flex; /* Use flexbox to center content inside the map */
+    flex-direction: column;
+    justify-content: center; /* Center content horizontally */
+    align-items: center; /* Center content vertically */
+  }
+  .ui .bottomUi {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media only screen and (orientation: landscape) and (min-aspect-ratio: 13/9) and (max-height: 619px) {
   /* CSS styles for landscape orientation */
   .ui {
     display: flex;
@@ -389,13 +389,5 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
-  }
-}
-
-@media only screen and (orientation: landscape) and (max-height: 400px) {
-  .map-square {
-    width: 4vh;
-    height: 4vh;
-    font-size: 1.5vw;
   }
 }
