@@ -132,8 +132,8 @@ body {
     "a a b"
     "c c b";
   background-color: #444;
-  width: 800px; /* Set a fixed width */
-  height: 630px; /* Set a fixed height */
+  max-width: 800px; /* Set a fixed width */
+  max-height: 620px; /* Set a fixed height */
   font-family: "Noto Color Emoji", "Segoe UI Emoji", "EnterCommand";
 }
 
@@ -150,11 +150,38 @@ body {
 }
 
 .map-square {
-  width: 26px;
-  height: 26px;
+  width: 4.5vw;
+  height: 4.5vw;
+  max-width: 26px;
+  max-height: 26px;
   display: inline-block;
-  font-size: 24px; /* Adjust the font size as needed */
+  font-size: 4vw; /* Adjust the font size as needed */
   font-family: "Noto Color Emoji", "Segoe UI Emoji", monospace;
+}
+
+@media (min-width: 650px) {
+  .map-square {
+    font-size: 24px; /* Maximum font size for smaller screens */
+  }
+}
+
+@media (max-width: 800px) {
+  .ui {
+    display: block;
+    margin: 0 auto;
+    overflow: visible;
+  }
+  .ui .map {
+    margin: 0 auto;
+    margin: auto; /* Center the map within its grid area */
+    display: flex; /* Use flexbox to center content inside the map */
+    flex-direction: column;
+    justify-content: center; /* Center content horizontally */
+    align-items: center; /* Center content vertically */
+  }
+  .ui .bottomUi {
+    grid-template-columns: 1fr;
+  }
 }
 
 .log {
@@ -184,8 +211,6 @@ body {
 }
 
 .livesContainer {
-  grid-column: 1;
-  grid-row: 1;
   height: auto;
   width: auto;
   display: flex;
@@ -200,8 +225,6 @@ body {
 }
 
 .luckContainer {
-  grid-column: 2;
-  grid-row: 1;
   height: auto;
   width: auto;
   font-weight: 500;
@@ -217,8 +240,6 @@ body {
 }
 
 .beasthoodContainer {
-  grid-column: 3;
-  grid-row: 1;
   height: auto;
   width: auto;
   font-weight: 500;
@@ -234,8 +255,6 @@ body {
 }
 
 .scoreKeep {
-  grid-column: 3;
-  grid-row: 1;
   height: auto;
   width: auto;
   font-weight: 500;
@@ -244,8 +263,6 @@ body {
 }
 
 .equipView {
-  grid-column: 1;
-  grid-row: 2;
   height: auto;
   width: auto;
   display: flex;
@@ -259,8 +276,6 @@ body {
 }
 
 .groundView {
-  grid-column: 3;
-  grid-row: 2;
   height: auto;
   width: auto;
   display: flex;
@@ -275,8 +290,6 @@ body {
 }
 
 .inventoryGrid {
-  grid-row: 2;
-  grid-column: 2;
   height: auto;
   width: auto;
   display: grid;

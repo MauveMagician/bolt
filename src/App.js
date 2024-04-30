@@ -7,7 +7,7 @@ let engine = null;
 let scheduler = null;
 let throwing = false;
 let throwingIndex = undefined;
-let MAX_LOG_SIZE = 15;
+let MAX_LOG_SIZE = 20;
 let MAX_INVENTORY_SIZE = 4;
 let MAX_BEASTHOOD = 16;
 let TO_LEVEL_2 = 4;
@@ -1730,7 +1730,6 @@ function App() {
       <div className="App">
         <div className="ui">
           {renderMap()}
-          {renderLog()}
           <div className="bottomUi">
             {renderLivesContainer()}
             {renderLuckContainer()}
@@ -1739,6 +1738,7 @@ function App() {
             {renderInventoryView()}
             {renderGroundView()}
           </div>
+          {renderLog()}
         </div>
       </div>
     );
