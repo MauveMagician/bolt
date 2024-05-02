@@ -1704,21 +1704,6 @@ function App() {
           <h1>Beasts of Labyrinth Tactics (BoLT)</h1>
           <p className="versionInfo">Version 1.0.0 Alpha</p>
           <button onClick={startGame}>Game Start</button>
-          <a
-            href="https://your-donation-link.com"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Donate
-          </a>
-          <a
-            href="https://www.patreon.com/your-patreon-link"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="patreonButton"
-          >
-            Patreon
-          </a>
           <p>ATTRIBUTION CREDITS: Enter Command font is made by jeti</p>
         </div>
       );
