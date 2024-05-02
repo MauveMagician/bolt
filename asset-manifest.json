@@ -1,0 +1,17 @@
+{
+  "files": {
+    "main.css": "/bolt/static/css/main.d2ce4ceb.css",
+    "main.js": "/bolt/static/js/main.53b4493a.js",
+    "static/js/453.0bf22d7e.chunk.js": "/bolt/static/js/453.0bf22d7e.chunk.js",
+    "static/media/NotoColorEmoji-Regular.ttf": "/bolt/static/media/NotoColorEmoji-Regular.e9859b48089358cdc923.ttf",
+    "static/media/EnterCommand-Bold.ttf": "/bolt/static/media/EnterCommand-Bold.99b5f931105e303862ed.ttf",
+    "index.html": "/bolt/index.html",
+    "main.d2ce4ceb.css.map": "/bolt/static/css/main.d2ce4ceb.css.map",
+    "main.53b4493a.js.map": "/bolt/static/js/main.53b4493a.js.map",
+    "453.0bf22d7e.chunk.js.map": "/bolt/static/js/453.0bf22d7e.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.d2ce4ceb.css",
+    "static/js/main.53b4493a.js"
+  ]
+}
