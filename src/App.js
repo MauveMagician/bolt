@@ -7,15 +7,17 @@ let engine = null;
 let scheduler = null;
 let throwing = false;
 let throwingIndex = undefined;
-let MAX_LOG_SIZE = 20;
+let dungeonLevel = 1;
+let MAX_LOG_SIZE = 23;
 let MAX_INVENTORY_SIZE = 4;
 let MAX_BEASTHOOD = 16;
 let TO_LEVEL_2 = 4;
 let TO_LEVEL_3 = 8;
 let TO_LEVEL_4 = 16;
 let selectedAnimal = "🐶";
+const ASCEND_LEVEL = 16;
 const generatedMap = {};
-const freeCells = [];
+let freeCells = [];
 const enemies = [];
 const eatFruit = {};
 const logContents = [];
@@ -87,6 +89,390 @@ const weapons = [
   "🧤", // Gloves
 ];
 
+class Enemy {
+  constructor(
+    x,
+    y,
+    emoji = "👺",
+    maxLives = 2,
+    name = "goblin",
+    toHit = 3,
+    speed = 2,
+    passives = []
+  ) {
+    this._x = x;
+    this._y = y;
+    this._emoji = emoji;
+    this.lives = maxLives;
+    this.maxLives = maxLives;
+    this.score = 0;
+    this.name = name;
+    this.toHit = toHit;
+    this._draw();
+    this.path = [];
+    this.ground = "⬛️";
+    this.speed = speed;
+    this.defaultSpeed = speed;
+    this.passives = passives;
+    this.tempEffects = [];
+    enemies.push(this);
+  }
+  get x() {
+    return this._x;
+  }
+
+  get y() {
+    return this._y;
+  }
+  _draw() {
+    generatedMap[this._x + "," + this._y] = this._emoji;
+  }
+  getSpeed() {
+    return this.speed;
+  }
+  beHit(attacker) {
+    let rollValue = d6();
+    if (
+      attacker.passives.includes("TwoWeapon") ||
+      attacker.passives.includes("Weak") ||
+      attacker.passives.includes("Innacuracy")
+    ) {
+      rollValue = Math.min(d6(), d6());
+    }
+    if (this.passives.includes("Thick Skin")) {
+      rollValue -= 1;
+    }
+    if (
+      attacker.passives.includes("PlusOne") ||
+      attacker.passives.includes("Keen Eyes") ||
+      this.passives.includes("Soft skin")
+    ) {
+      rollValue += 1;
+    }
+    if (
+      attacker.passives.includes("Luck mastery") &&
+      (rollValue === this.toHit - 2 || rollValue === 4) &&
+      attacker.luck > 0
+    ) {
+      log("Very lucky!", "#00FF00");
+      attacker.luck -= 1;
+      rollValue += 2;
+    } else if (
+      (rollValue === this.toHit - 1 || rollValue === 5) &&
+      attacker.luck > 0
+    ) {
+      log("Lucky!", "#00FF00");
+      attacker.luck -= 1;
+      rollValue += 1;
+    }
+    if (rollValue >= this.toHit) {
+      if (
+        (attacker.passives.includes("Mighty") ||
+          attacker.passives.includes("TwoWeapon") ||
+          attacker.passives.includes("Mighty strikes")) &&
+        !attacker.passives.includes("Weak")
+      ) {
+        this.lives -= 2;
+      } else {
+        this.lives -= 1;
+      }
+      if (this.lives <= 0) {
+        log(attacker.name + " slays the " + this.name + "!", "#FFD700");
+        this.die();
+      } else if (
+        (attacker.passives.includes("Mighty") ||
+          attacker.passives.includes("TwoWeapon") ||
+          attacker.passives.includes("Mighty strikes")) &&
+        !attacker.passives.includes("Weak")
+      ) {
+        log(
+          attacker.name + " deals a mighty blow to the " + this.name + "!",
+          "#E5DE00"
+        );
+      } else {
+        log(attacker.name + " hits the " + this.name + "!", "#E5DE00");
+      }
+    } else {
+      log(attacker.name + " misses the " + this.name + "!", "#F0E68C");
+      attacker.luck += 1;
+      if (attacker.luck > attacker.maxLuck) {
+        attacker.luck = attacker.maxLuck;
+      }
+    }
+    if (rollValue >= 6) {
+      log("Critical hit!", "#FFD700");
+      if (this.lives > 0) {
+        log(attacker.name + " makes an extra attack!", "#FFD700");
+        attacker.beasthoodUp(1);
+        this.beHit(attacker);
+      } else {
+        const attackerX = attacker.x;
+        const attackerY = attacker.y;
+        const directions = [
+          [0, -1], // North
+          [1, -1], // Northeast
+          [1, 0], // East
+          [1, 1], // Southeast
+          [0, 1], // South
+          [-1, 1], // Southwest
+          [-1, 0], // West
+          [-1, -1], // Northwest
+        ];
+        let neighborX = undefined;
+        let neighborY = undefined;
+        for (let i = 0; i < directions.length; i++) {
+          const [dx, dy] = directions[i];
+          neighborX = attackerX + dx;
+          neighborY = attackerY + dy;
+          enemies.forEach((enemy) => {
+            if (
+              enemy.x === neighborX &&
+              enemy.y === neighborY &&
+              enemy.lives > 0
+            ) {
+              log(attacker.name + " makes an extra attack!", "#FFD700");
+              enemy.beHit(attacker);
+              attacker.beasthoodUp(1);
+              return;
+            }
+          });
+        }
+      }
+    }
+  }
+  die() {
+    scheduler.remove(this);
+    enemies.splice(enemies.indexOf(this), 1);
+    if (this.ground === "⬛️") {
+      generatedMap[this._x + "," + this._y] = "🦴";
+    } else {
+      generatedMap[this._x + "," + this._y] = this.ground;
+    }
+  }
+  act() {
+    if (this.passives.includes("Asleep")) {
+      this.tempTick();
+      return;
+    }
+    if (this.passives.includes("Confused")) {
+      const dir = Math.floor(ROT.RNG.getUniform() * 8);
+      const newX = this._x + ROT.DIRS[8][dir][0];
+      const newY = this._y + ROT.DIRS[8][dir][1];
+      const key = newX + "," + newY;
+      if (
+        newX >= 0 &&
+        newX < 50 &&
+        newY >= 0 &&
+        newY < 50 &&
+        generatedMap[key] !== "🟫" && // Check if the new position is not a wall
+        !enemies.some(
+          (enemy) => enemy._x === newX && enemy._y === newY && enemy !== this
+        ) && // Check if the new position does not have another enemy
+        !(player.x === newX && player.y === newY) // Check if the new position is not occupied by the player
+      ) {
+        generatedMap[this._x + "," + this._y] = this.ground;
+        this.ground = generatedMap[key];
+        this._x = newX;
+        this._y = newY;
+        this._draw();
+      }
+      this.tempTick();
+      return;
+    }
+    var x = player.x;
+    var y = player.y;
+    var passableCallback = (x, y) => {
+      const key = x + "," + y;
+      return (
+        generatedMap[key] !== "🟫" &&
+        !enemies.some(
+          (enemy) => enemy._x === x && enemy._y === y && enemy !== this
+        )
+      );
+    };
+    var astar = new ROT.Path.AStar(x, y, passableCallback, {
+      topology: this.passives.includes("Orthogonal") ? 4 : 8,
+    });
+    var path = [];
+    var pathCallback = function (x, y) {
+      path.push([x, y]);
+    };
+    astar.compute(this._x, this._y, pathCallback);
+    if (path.length) {
+      this.path = path.slice(0); // Store the computed path for the goblin
+      this.path.shift();
+      if (this.path.length === 1) {
+        if (this.passives.includes("Enfeebling strikes") && d6() >= 6) {
+          weakness(player);
+        }
+        player.beHit(this);
+      } else {
+        generatedMap[this._x + "," + this._y] = this.ground;
+        var nextStep = this.path[0];
+        this.ground = generatedMap[nextStep[0] + "," + nextStep[1]];
+        this._x = nextStep[0];
+        this._y = nextStep[1];
+        this._draw();
+      }
+      this.tempTick();
+    }
+  }
+  tempTick() {
+    for (let key in this.tempEffects) {
+      // Access the key and value of the dictionary
+      this.tempEffects[key] -= 1;
+      if (this.tempEffects[key] <= 0) {
+        if (key === "Hasted" || key === "Slowed") {
+          this.speed = this.defaultSpeed;
+        }
+        delete this.tempEffects[key];
+        const passiveIndex = this.passives.indexOf(key);
+        if (passiveIndex !== -1) {
+          this.passives.splice(passiveIndex, 1);
+          log(this.name + " is no longer affected by " + key, "SkyBlue");
+        }
+      }
+    }
+  }
+}
+
+class GridBug extends Enemy {
+  constructor(
+    x,
+    y,
+    emoji = "👾",
+    maxLives = 1,
+    name = "grid bug",
+    toHit = 2,
+    speed = 2,
+    passives = ["Orthogonal"]
+  ) {
+    super(x, y, emoji, maxLives, name, toHit, speed, passives);
+  }
+}
+
+class Goblin extends Enemy {
+  constructor(
+    x,
+    y,
+    emoji = "👺",
+    maxLives = 2,
+    name = "goblin",
+    toHit = 3,
+    speed = 2,
+    passives = []
+  ) {
+    super(x, y, emoji, maxLives, name, toHit, speed, passives);
+  }
+}
+
+class Ogre extends Enemy {
+  constructor(
+    x,
+    y,
+    emoji = "👹",
+    maxLives = 5,
+    name = "ogre",
+    toHit = 4,
+    speed = 1,
+    passives = ["Mighty strikes"]
+  ) {
+    super(x, y, emoji, maxLives, name, toHit, speed, passives);
+  }
+}
+
+class Cockroach extends Enemy {
+  constructor(
+    x,
+    y,
+    emoji = "🪳",
+    maxLives = 3,
+    name = "cockroach",
+    toHit = 4,
+    speed = 2,
+    passives = ["Enfeebling strikes"]
+  ) {
+    super(x, y, emoji, maxLives, name, toHit, speed, passives);
+  }
+}
+
+class Mosquito extends Enemy {
+  constructor(
+    x,
+    y,
+    emoji = "🦟",
+    maxLives = 2,
+    name = "cockroach",
+    toHit = 2,
+    speed = 3,
+    passives = ["Blood draining"]
+  ) {
+    super(x, y, emoji, maxLives, name, toHit, speed, passives);
+  }
+}
+
+class Dragon extends Enemy {
+  constructor(
+    x,
+    y,
+    emoji = "🐉",
+    maxLives = 10,
+    name = "dragon",
+    toHit = 4,
+    speed = 3,
+    passives = []
+  ) {
+    super(x, y, emoji, maxLives, name, toHit, speed, passives);
+  }
+}
+
+const dungeonEnemies = [Goblin, GridBug, Ogre];
+
+function nextLevel() {
+  dungeonLevel += 1;
+  freeCells.length = 0;
+  player.ground = "⬛️";
+  enemies.forEach((enemy) => {
+    scheduler.remove(enemy);
+  });
+  enemies.length = 0;
+  const map = new ROT.Map.Digger(50, 50).create((x, y, value) => {
+    const key = x + "," + y;
+    generatedMap[key] = value === 1 ? "🟫" : "⬛️";
+    if (value === 0) {
+      freeCells.push(key);
+    }
+  });
+  var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
+  var key = freeCells.splice(index, 1)[0];
+  var parts = key.split(",");
+  var x = parseInt(parts[0]);
+  var y = parseInt(parts[1]);
+  player._x = x;
+  player._y = y;
+  freeCells = freeCells.filter((cell) => {
+    var cellParts = cell.split(",");
+    var cellX = parseInt(cellParts[0]);
+    var cellY = parseInt(cellParts[1]);
+    return Math.abs(cellX - x) > 3 || Math.abs(cellY - y) > 3;
+  });
+  populateItems();
+  populateHoles();
+  if (dungeonLevel >= ASCEND_LEVEL) {
+    log(dungeonLevel, "white");
+    log("You sense your ultimate goal", "gold");
+    placeTrophy();
+  }
+  const goblins = [];
+  for (let i = 0; i < 10; i++) {
+    goblins.push(createBeing(Enemy));
+  }
+  goblins.forEach((element) => {
+    scheduler.add(element, true);
+  });
+  player._draw();
+}
+
 function log(message, color) {
   const newMessage = (
     <span className="logText" style={{ color }}>
@@ -121,8 +507,8 @@ function randomizeFruit() {
   }
 }
 
-function healing(eater) {
-  eater.lives += 2;
+function healing(eater, value = 2) {
+  eater.lives += value;
   if (eater.lives > eater.maxLives) {
     eater.lives = eater.maxLives;
   }
@@ -388,6 +774,10 @@ function d6() {
   return Math.floor(Math.random() * 6) + 1;
 }
 
+function d2() {
+  return Math.floor(Math.random() * 2) + 1;
+}
+
 class Player {
   constructor(
     x,
@@ -397,7 +787,7 @@ class Player {
     name = "Bolt",
     toHit = 4,
     inventory = [],
-    passives = [],
+    passives = ["Bone chewer"],
     speed = 2,
     maxLuck = 4,
     minBeasthood = 0,
@@ -425,6 +815,8 @@ class Player {
     this.beasthood = minBeasthood;
     this.minBeasthood = minBeasthood;
     this.levelBenefits = levelBenefits;
+    this.incombat = false;
+    this.combat_timer = 0;
     this._draw();
   }
 
@@ -519,6 +911,8 @@ class Player {
   }
 
   beHit(enemy) {
+    this.incombat = true;
+    this.combat_timer = 6;
     if (this.passives.includes("Invulnerable")) {
       log(this.name + " shrugs off the " + enemy.name + "'s attack", "#B0C4DE");
       return;
@@ -544,7 +938,10 @@ class Player {
     }
     this.beasthoodUp(1);
     if (rollValue >= this.toHit) {
-      if (enemy.passives.includes("Mighty")) {
+      if (
+        enemy.passives.includes("Mighty") ||
+        this.passives.includes("Mighty strikes")
+      ) {
         this.lives -= 2;
         log(
           "The " + enemy.name + " hits " + this.name + " with a mighty blow!",
@@ -559,6 +956,10 @@ class Player {
       }
       if (this.lives <= 0) {
         this.die();
+      }
+      if (enemy.passives.includes("Blood draining")) {
+        log(enemy.name + " drains " + this.name + "'s blood!", "red");
+        healing(enemy, 1);
       }
       document.querySelector(".App").classList.add("shake");
       setTimeout(() => {
@@ -594,7 +995,35 @@ class Player {
     log("Game over!", "#FF1493");
   }
 
+  win() {
+    engine.lock();
+    log(
+      this.name + " takes the trophy and finally becomes a true champion!",
+      "white"
+    );
+    log(
+      "Congratulations! You and " +
+        this.name +
+        " have defeated the Labyrinth together! You win!",
+      "gold"
+    );
+  }
+
   useGround() {
+    if (this.ground === "🏆") {
+      this.win();
+      return true;
+    }
+    if (this.ground === "🕳️") {
+      nextLevel();
+      return true;
+    }
+    if (this.passives.includes("Bone chewer") && this.ground === "🦴") {
+      this.ground = "⬛️";
+      log(this.name + " chews on a bone!", "white");
+      healing(this, 1);
+      return true;
+    }
     if (
       fruit.includes(this.ground) &&
       this.inventory.length < MAX_INVENTORY_SIZE
@@ -684,20 +1113,34 @@ class Player {
     } else {
       engine.lock();
       /* wait for user input; do stuff when user hits a key */
-      window.addEventListener("keydown", this);
+      setTimeout(() => window.addEventListener("keydown", this), 50);
     }
-    for (let key in player.tempEffects) {
+    this.tempTick();
+  }
+
+  tempTick() {
+    if (!this.incombat) {
+      this.lives = Math.min(this.maxLives, this.lives + 1);
+      this.luck = Math.min(this.maxLuck, this.luck + 1);
+      this.beasthoodDown(1);
+    } else {
+      this.combat_timer -= 1;
+      if (this.combat_timer <= 0) {
+        this.incombat = false;
+      }
+    }
+    for (let key in this.tempEffects) {
       // Access the key and value of the dictionary
-      player.tempEffects[key] -= 1;
-      if (player.tempEffects[key] <= 0) {
+      this.tempEffects[key] -= 1;
+      if (this.tempEffects[key] <= 0) {
         if (key === "Hasted" || key === "Slowed") {
           this.speed = this.defaultSpeed;
         }
-        delete player.tempEffects[key];
-        const passiveIndex = player.passives.indexOf(key);
+        delete this.tempEffects[key];
+        const passiveIndex = this.passives.indexOf(key);
         if (passiveIndex !== -1) {
-          player.passives.splice(passiveIndex, 1);
-          log(player.name + " is no longer affected by " + key, "SkyBlue");
+          this.passives.splice(passiveIndex, 1);
+          log(this.name + " is no longer affected by " + key, "SkyBlue");
         }
       }
     }
@@ -817,7 +1260,6 @@ class Player {
     }
     if (code === 81) {
       if (player.useGround()) {
-        this.beasthoodDown(1);
         if (!this.passives.includes("Fast paws")) {
           window.removeEventListener("keydown", this);
           engine.unlock();
@@ -831,13 +1273,6 @@ class Player {
       window.removeEventListener("keydown", this);
       if (player.passives.includes("On fire")) {
         player.tempEffects["On fire"] = 0;
-      }
-      if (this.luck < this.maxLuck) {
-        this.beasthoodDown(1); // Decrease beasthood by 1
-        this.luck += 1;
-        this.luck = Math.min(this.maxLuck, this.luck);
-      } else {
-        this.beasthoodDown(1);
       }
       engine.unlock();
       return;
@@ -865,7 +1300,6 @@ class Player {
         eat(player, player.inventory[0]);
         player.inventory.splice(0, 1);
         if (!this.passives.includes("Fast paws")) {
-          this.beasthoodDown(1);
           window.removeEventListener("keydown", this);
           engine.unlock();
         }
@@ -888,7 +1322,6 @@ class Player {
         eat(player, player.inventory[1]);
         player.inventory.splice(1, 1);
         if (!this.passives.includes("Fast paws")) {
-          this.beasthoodDown(1);
           window.removeEventListener("keydown", this);
           engine.unlock();
         }
@@ -911,7 +1344,6 @@ class Player {
         eat(player, player.inventory[2]);
         player.inventory.splice(2, 1);
         if (!this.passives.includes("Fast paws")) {
-          this.beasthoodDown(1);
           window.removeEventListener("keydown", this);
           engine.unlock();
         }
@@ -933,9 +1365,7 @@ class Player {
         }
         eat(player, player.inventory[3]);
         player.inventory.splice(3, 1);
-        this.beasthoodDown(1);
         if (!this.passives.includes("Fast paws")) {
-          this.beasthoodDown(1);
           window.removeEventListener("keydown", this);
           engine.unlock();
         }
@@ -980,8 +1410,7 @@ class Player {
         newX != 49 &&
         newY != 49
       ) {
-        this.beasthoodDown(1);
-        generatedMap[newKey] = "⬛";
+        generatedMap[newKey] = "⬛️";
         window.removeEventListener("keydown", this);
         engine.unlock();
       }
@@ -1011,7 +1440,6 @@ class Player {
       if (player.passives.includes("On fire")) {
         player.burn();
       }
-      this.beasthoodDown(1);
       if (this.passives.includes("Pounce")) {
         const pounce_x = this._x + diff[0];
         const pounce_y = this._y + diff[1];
@@ -1038,6 +1466,8 @@ class Player {
         );
       }
     }
+    this.incombat = true;
+    this.combat_timer = 6;
     this.beasthoodUp(1);
     enemy.beHit(player);
   }
@@ -1101,7 +1531,7 @@ function createPlayer() {
       ]);
       break;
     case "🐋":
-      player = new Player(x, y, "🐋", 5, "Wave", 4, [], ["Aquatic"], 2, 4, 0, [
+      player = new Player(x, y, "🐋", 4, "Wave", 4, [], ["Aquatic"], 2, 4, 0, [
         "Mighty strikes",
         "Great defense",
         "Ultrasonic Blast",
@@ -1113,258 +1543,79 @@ function createPlayer() {
   }
 }
 
-function populateItems() {
+function populateItems(level = 1) {
   for (var i = 0; i < 50; i++) {
     var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
-    var key = freeCells[index];
-    var randomValue = Math.random();
-    if (randomValue < 0.5) {
+    var key = freeCells.splice(index, 1)[0];
+    if (d6() === 6) {
+      // 1/6 chance for weapon
+      generatedMap[key] = Math.random() < 0.5 ? "🗡️" : "⚔️"; // Equal chance for Dagger or Double Sword
+    } else {
+      // 5/6 chance for fruit
       var randomFruitIndex = Math.floor(Math.random() * fruit.length);
       generatedMap[key] = fruit[randomFruitIndex];
-    } else if (randomValue < 0.75) {
-      generatedMap[key] = "🗡️"; // Dagger
-    } else {
-      generatedMap[key] = "⚔️"; // Double Sword
     }
   }
 }
 
-class Enemy {
-  constructor(
-    x,
-    y,
-    emoji = "👺",
-    maxLives = 2,
-    name = "goblin",
-    toHit = 3,
-    speed = 2,
-    passives = []
-  ) {
-    this._x = x;
-    this._y = y;
-    this._emoji = emoji;
-    this.lives = maxLives;
-    this.maxLives = maxLives;
-    this.score = 0;
-    this.name = name;
-    this.toHit = toHit;
-    this._draw();
-    this.path = [];
-    this.ground = "⬛️";
-    this.speed = speed;
-    this.defaultSpeed = speed;
-    this.passives = passives;
-    this.tempEffects = [];
-    enemies.push(this);
-  }
-  get x() {
-    return this._x;
-  }
+function populateHoles(level = 1) {
+  for (var i = 0; i < 5; i++) {
+    var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
+    var key = freeCells.splice(index, 1)[0];
+    var parts = key.split(",");
+    var x = parseInt(parts[0]);
+    var y = parseInt(parts[1]);
+    generatedMap[key] = "🕳️";
 
-  get y() {
-    return this._y;
-  }
-  _draw() {
-    generatedMap[this._x + "," + this._y] = this._emoji;
-  }
-  getSpeed() {
-    return this.speed;
-  }
-  beHit(attacker) {
-    let rollValue = d6();
-    if (
-      attacker.passives.includes("TwoWeapon") ||
-      attacker.passives.includes("Weak") ||
-      attacker.passives.includes("Innacuracy")
-    ) {
-      rollValue = Math.min(d6(), d6());
-    }
-    if (this.passives.includes("Thick Skin")) {
-      rollValue -= 1;
-    }
-    if (
-      attacker.passives.includes("PlusOne") ||
-      attacker.passives.includes("Keen Eyes") ||
-      this.passives.includes("Soft skin")
-    ) {
-      rollValue += 1;
-    }
-    if (
-      attacker.passives.includes("Luck mastery") &&
-      (rollValue === this.toHit - 2 || rollValue === 4) &&
-      attacker.luck > 0
-    ) {
-      log("Very lucky!", "#00FF00");
-      attacker.luck -= 1;
-      rollValue += 2;
-    } else if (
-      (rollValue === this.toHit - 1 || rollValue === 5) &&
-      attacker.luck > 0
-    ) {
-      log("Lucky!", "#00FF00");
-      attacker.luck -= 1;
-      rollValue += 1;
-    }
-    if (rollValue >= this.toHit) {
-      if (
-        (attacker.passives.includes("Mighty") ||
-          attacker.passives.includes("TwoWeapon") ||
-          attacker.passives.includes("Mighty strikes")) &&
-        !attacker.passives.includes("Weak")
-      ) {
-        this.lives -= 2;
-      } else {
-        this.lives -= 1;
+    // Remove adjacent cells from freeCells
+    const adjacentOffsets = [
+      [-1, -1],
+      [0, -1],
+      [1, -1],
+      [-1, 0],
+      [1, 0],
+      [-1, 1],
+      [0, 1],
+      [1, 1],
+    ];
+    adjacentOffsets.forEach((offset) => {
+      const adjacentKey = x + offset[0] + "," + (y + offset[1]);
+      const adjacentIndex = freeCells.indexOf(adjacentKey);
+      if (adjacentIndex !== -1) {
+        freeCells.splice(adjacentIndex, 1);
       }
-      if (this.lives <= 0) {
-        log(attacker.name + " slays the " + this.name + "!", "#FFD700");
-        this.die();
-      } else if (
-        (attacker.passives.includes("Mighty") ||
-          attacker.passives.includes("TwoWeapon") ||
-          attacker.passives.includes("Mighty strikes")) &&
-        !attacker.passives.includes("Weak")
-      ) {
-        log(
-          attacker.name + " deals a mighty blow to the " + this.name + "!",
-          "#E5DE00"
-        );
-      } else {
-        log(attacker.name + " hits the " + this.name + "!", "#E5DE00");
-      }
-    } else {
-      log(attacker.name + " misses the " + this.name + "!", "#F0E68C");
-      attacker.luck += 1;
-      if (attacker.luck > attacker.maxLuck) {
-        attacker.luck = attacker.maxLuck;
-      }
-    }
-    if (rollValue >= 6) {
-      log("Critical hit!", "#FFD700");
-      if (this.lives > 0) {
-        log(attacker.name + " makes an extra attack!", "#FFD700");
-        attacker.beasthoodUp(1);
-        this.beHit(attacker);
-      } else {
-        const attackerX = attacker.x;
-        const attackerY = attacker.y;
-        const directions = [
-          [0, -1], // North
-          [1, -1], // Northeast
-          [1, 0], // East
-          [1, 1], // Southeast
-          [0, 1], // South
-          [-1, 1], // Southwest
-          [-1, 0], // West
-          [-1, -1], // Northwest
-        ];
-        let neighborX = undefined;
-        let neighborY = undefined;
-        for (let i = 0; i < directions.length; i++) {
-          const [dx, dy] = directions[i];
-          neighborX = attackerX + dx;
-          neighborY = attackerY + dy;
-          enemies.forEach((enemy) => {
-            if (
-              enemy.x === neighborX &&
-              enemy.y === neighborY &&
-              enemy.lives > 0
-            ) {
-              log(attacker.name + " makes an extra attack!", "#FFD700");
-              enemy.beHit(attacker);
-              attacker.beasthoodUp(1);
-              return;
-            }
-          });
-        }
-      }
-    }
+    });
   }
-  die() {
-    scheduler.remove(this);
-    enemies.splice(enemies.indexOf(this), 1);
-    if (this.ground === "⬛️") {
-      generatedMap[this._x + "," + this._y] = "🦴";
-    } else {
-      generatedMap[this._x + "," + this._y] = this.ground;
+}
+
+function placeTrophy() {
+  var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
+  var key = freeCells.splice(index, 1)[0];
+  var parts = key.split(",");
+  const guardianCells = [];
+  var x = parseInt(parts[0]);
+  var y = parseInt(parts[1]);
+  generatedMap[key] = "🏆";
+
+  const adjacentOffsets = [
+    [-1, -1],
+    [0, -1],
+    [1, -1],
+    [-1, 0],
+    [1, 0],
+    [-1, 1],
+    [0, 1],
+    [1, 1],
+  ];
+  adjacentOffsets.forEach((offset) => {
+    const adjacentKey = x + offset[0] + "," + (y + offset[1]);
+    const adjacentIndex = freeCells.indexOf(adjacentKey);
+    if (adjacentIndex !== -1) {
+      guardianCells.push(freeCells.splice(adjacentIndex, 1));
     }
-  }
-  act() {
-    if (this.passives.includes("Confused")) {
-      const dir = Math.floor(ROT.RNG.getUniform() * 8);
-      const newX = this._x + ROT.DIRS[8][dir][0];
-      const newY = this._y + ROT.DIRS[8][dir][1];
-      const key = newX + "," + newY;
-      if (
-        newX >= 0 &&
-        newX < 50 &&
-        newY >= 0 &&
-        newY < 50 &&
-        generatedMap[key] !== "🟫" && // Check if the new position is not a wall
-        !enemies.some(
-          (enemy) => enemy._x === newX && enemy._y === newY && enemy !== this
-        ) && // Check if the new position does not have another enemy
-        !(player.x === newX && player.y === newY) // Check if the new position is not occupied by the player
-      ) {
-        generatedMap[this._x + "," + this._y] = this.ground;
-        this.ground = generatedMap[key];
-        this._x = newX;
-        this._y = newY;
-        this._draw();
-      }
-      this.tempTick();
-      return;
-    }
-    var x = player.x;
-    var y = player.y;
-    var passableCallback = (x, y) => {
-      const key = x + "," + y;
-      return (
-        generatedMap[key] !== "🟫" &&
-        !enemies.some(
-          (enemy) => enemy._x === x && enemy._y === y && enemy !== this
-        )
-      );
-    };
-    var astar = new ROT.Path.AStar(x, y, passableCallback, { topology: 8 });
-    var path = [];
-    var pathCallback = function (x, y) {
-      path.push([x, y]);
-    };
-    astar.compute(this._x, this._y, pathCallback);
-    if (path.length) {
-      this.path = path.slice(0); // Store the computed path for the goblin
-      this.path.shift();
-      if (this.path.length === 1) {
-        player.beHit(this);
-      } else {
-        generatedMap[this._x + "," + this._y] = this.ground;
-        var nextStep = this.path[0];
-        this.ground = generatedMap[nextStep[0] + "," + nextStep[1]];
-        this._x = nextStep[0];
-        this._y = nextStep[1];
-        this._draw();
-      }
-      this.tempTick();
-    }
-  }
-  tempTick() {
-    for (let key in this.tempEffects) {
-      // Access the key and value of the dictionary
-      this.tempEffects[key] -= 1;
-      if (this.tempEffects[key] <= 0) {
-        if (key === "Hasted" || key === "Slowed") {
-          this.speed = this.defaultSpeed;
-        }
-        delete this.tempEffects[key];
-        const passiveIndex = this.passives.indexOf(key);
-        if (passiveIndex !== -1) {
-          this.passives.splice(passiveIndex, 1);
-          log(this.name + " is no longer affected by " + key, "SkyBlue");
-        }
-      }
-    }
-  }
+  });
+  const guardian = createBeing(Dragon, true, guardianCells);
+  scheduler.add(guardian, true);
 }
 
 function initializeGame() {
@@ -1378,9 +1629,14 @@ function initializeGame() {
   randomizeFruit();
   createPlayer();
   populateItems();
-  const goblins = createBeing(Enemy);
+  populateHoles();
+  const goblins = [];
+  for (let i = 0; i < 10; i++) {
+    goblins.push(createBeing());
+  }
   scheduler = new ROT.Scheduler.Speed();
   scheduler.add(player, true);
+  console.log(goblins);
   goblins.forEach((element) => {
     scheduler.add(element, true);
   });
@@ -1388,17 +1644,37 @@ function initializeGame() {
   engine.start();
 }
 
-function createBeing(what) {
-  const beings = [];
-  for (var i = 0; i < 30; i++) {
+function createBeing(what = undefined, guardian = false, guardianCells = []) {
+  if (!guardian) {
+    var roll = d2() + d2(); // Assuming d2() is a function that returns 1 or 2
     var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
     var key = freeCells.splice(index, 1)[0];
     var parts = key.split(",");
     var x = parseInt(parts[0]);
     var y = parseInt(parts[1]);
-    beings.push(new what(x, y));
+
+    switch (roll) {
+      case 2:
+        return new Goblin(x, y);
+      case 3:
+        return new GridBug(x, y);
+      case 4:
+        return new Ogre(x, y);
+      default:
+        // Optionally handle unexpected roll values
+        console.error("Unexpected roll value:", roll);
+        return null;
+    }
+  } else {
+    var index = Math.floor(ROT.RNG.getUniform() * guardianCells.length);
+    var key = guardianCells.splice(index, 1)[0];
+    console.log(key);
+    var parts = key[0].split(",");
+    var x = parseInt(parts[0]);
+    var y = parseInt(parts[1]);
+    // Adjust this part if you want to use the roll logic for guardians as well
+    return new what(x, y);
   }
-  return beings;
 }
 
 //LOGIC ENDS HERE. DRAWING STARTS HERE
