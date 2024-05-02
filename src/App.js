@@ -345,7 +345,7 @@ class GridBug extends Enemy {
     name = "grid bug",
     toHit = 2,
     speed = 2,
-    passives = ["Orthogonal"]
+    passives = ["Orthogonal", "Mighty strikes"]
   ) {
     super(x, y, emoji, maxLives, name, toHit, speed, passives);
   }
@@ -940,7 +940,7 @@ class Player {
     if (rollValue >= this.toHit) {
       if (
         enemy.passives.includes("Mighty") ||
-        this.passives.includes("Mighty strikes")
+        enemy.passives.includes("Mighty strikes")
       ) {
         this.lives -= 2;
         log(
