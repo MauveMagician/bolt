@@ -14,6 +14,7 @@
 body {
   font-family: "EnterCommand";
   color: white;
+  background-color: #222222;
 }
 
 .startScreen {
@@ -165,8 +166,26 @@ body {
   height: auto;
   width: auto;
   padding: 10px;
-  overflow: hidden;
+  overflow-y: scroll;
   font-family: "EnterCommand";
+}
+
+/* For Chrome, Edge, and Safari */
+.log::-webkit-scrollbar {
+  width: 8px; /* Width of the scrollbar */
+}
+
+.log::-webkit-scrollbar-track {
+  background: #222; /* Color of the scrollbar track */
+}
+
+.log::-webkit-scrollbar-thumb {
+  background-color: #aaa; /* Color of the scrollbar thumb */
+  border-radius: 4px; /* Rounded corners on the scrollbar thumb */
+}
+
+.log::-webkit-scrollbar-thumb:hover {
+  background: #bbb; /* Color of the scrollbar thumb on hover */
 }
 
 .logText {
