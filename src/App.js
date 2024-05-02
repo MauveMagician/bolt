@@ -75,6 +75,24 @@ const effects = [
   fire,
   luck,
 ];
+const effectNames = {
+  healing: "healing",
+  extraHealing: "extraHealing",
+  poison: "poison",
+  haste: "haste",
+  might: "might",
+  confusion: "confusion",
+  flying: "flying",
+  mutation: "mutation",
+  slowing: "slowing",
+  invunlerability: "invunlerability",
+  weakness: "weakness",
+  beasthood: "beasthood",
+  cancellation: "cancellation",
+  sleeping: "sleeping",
+  fire: "fire",
+  luck: "luck",
+};
 const weapons = [
   "🗡️", // Dagger
   "⚔️", // Double Sword
@@ -1075,7 +1093,6 @@ class Player {
   wieldWeapon(item) {
     // Logic to equip the item
     // Example: When equipping a dagger, add the "PlusOne" passive ability
-    console.log("Wielding " + item);
     if (item === "🗡️") {
       log("Dagger equipped", "white");
       this.wield = "🗡️";
@@ -1241,7 +1258,7 @@ class Player {
               " appraises the " +
               fruitNames[randomFruit] +
               "! It's a fruit of " +
-              eatFruit[randomFruit].name +
+              effectNames[eatFruit[randomFruit].name] +
               "!",
             "gold"
           );
@@ -1636,7 +1653,6 @@ function initializeGame() {
   }
   scheduler = new ROT.Scheduler.Speed();
   scheduler.add(player, true);
-  console.log(goblins);
   goblins.forEach((element) => {
     scheduler.add(element, true);
   });
@@ -1668,7 +1684,6 @@ function createBeing(what = undefined, guardian = false, guardianCells = []) {
   } else {
     var index = Math.floor(ROT.RNG.getUniform() * guardianCells.length);
     var key = guardianCells.splice(index, 1)[0];
-    console.log(key);
     var parts = key[0].split(",");
     var x = parseInt(parts[0]);
     var y = parseInt(parts[1]);
