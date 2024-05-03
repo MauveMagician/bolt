@@ -326,10 +326,12 @@ class Enemy {
 
   burn() {
     this.lives -= 1;
-    log(this.name + " is hurt by burning!", "#FF4500");
     if (this.lives <= 0) {
       this.die();
+      log(this.name + " burns to death!", "#FF4500");
+      return;
     }
+    log(this.name + " is hurt by burning!", "#FF4500");
   }
 
   tempTick() {
@@ -1037,13 +1039,15 @@ class Player {
   }
 
   burn() {
+    this.incombat = true;
+    this.combat_timer = 6;
     document.querySelector(".App").classList.add("shake");
     setTimeout(() => {
       document.querySelector(".App").classList.remove("shake");
     }, 200);
     this.lives -= 1;
     log(this.name + " is hurt by burning!", "#FF4500");
-    if (this.lives == 1) {
+    if (this.lives === 1) {
       log(this.name + " is on their last breath!", "#8B0000");
     }
     if (this.lives <= 0) {
@@ -1188,8 +1192,8 @@ class Player {
   }
 
   tempTick() {
-    if (player.passives.includes("On fire")) {
-      player.burn();
+    if (this.passives.includes("On fire")) {
+      this.burn();
     }
     if (!this.incombat) {
       this.lives = Math.min(this.maxLives, this.lives + 1);
@@ -1756,6 +1760,9 @@ function App() {
     log("Game started!", "#32CD32");
     player.inventory.push(
       Object.keys(eatFruit).find((key) => eatFruit[key] === healing)
+    );
+    player.inventory.push(
+      Object.keys(eatFruit).find((key) => eatFruit[key] === fire)
     );
     setAnimalSelected(true);
   };
