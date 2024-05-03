@@ -522,64 +522,64 @@ function randomizeFruit() {
     eatFruit[fruit[i]] = effects[i];
     switch (i) {
       case 0:
-        effectNames[i] = "healing";
+        effectNames[fruit[i]] = "healing";
         break;
       case 1:
-        effectNames[i] = "extra healing";
+        effectNames[fruit[i]] = "extra healing";
         break;
       case 2:
-        effectNames[i] = "poison";
+        effectNames[fruit[i]] = "poison";
         break;
       case 3:
-        effectNames[i] = "haste";
+        effectNames[fruit[i]] = "haste";
         break;
       case 4:
-        effectNames[i] = "might";
+        effectNames[fruit[i]] = "might";
         break;
       case 5:
-        effectNames[i] = "confusion";
+        effectNames[fruit[i]] = "confusion";
         break;
       case 6:
-        effectNames[i] = "flying";
+        effectNames[fruit[i]] = "flying";
         break;
       case 7:
-        effectNames[i] = "mutation";
+        effectNames[fruit[i]] = "mutation";
         break;
       case 8:
-        effectNames[i] = "slowing";
+        effectNames[fruit[i]] = "slowing";
         break;
       case 9:
-        effectNames[i] = "invulnerability";
+        effectNames[fruit[i]] = "invulnerability";
         break;
       case 10:
-        effectNames[i] = "weakness";
+        effectNames[fruit[i]] = "weakness";
         break;
       case 11:
-        effectNames[i] = "beasthood";
+        effectNames[fruit[i]] = "beasthood";
         break;
       case 12:
-        effectNames[i] = "cancellation";
+        effectNames[fruit[i]] = "cancellation";
         break;
       case 13:
-        effectNames[i] = "sleeping";
+        effectNames[fruit[i]] = "sleeping";
         break;
       case 14:
-        effectNames[i] = "fire";
+        effectNames[fruit[i]] = "fire";
         break;
       case 15:
-        effectNames[i] = "luck";
+        effectNames[fruit[i]] = "luck";
         break;
     }
   }
 }
 
-const healing = function healing(eater, value = 2) {
+function healing(eater, value = 2) {
   eater.lives += value;
   if (eater.lives > eater.maxLives) {
     eater.lives = eater.maxLives;
   }
   log(eater.name + " feels better!", "#7FFF00");
-};
+}
 function extraHealing(eater) {
   if (eater.lives >= eater.maxLives) {
     eater.lives += 1;
@@ -1313,7 +1313,7 @@ class Player {
               " appraises the " +
               fruitNames[randomFruit] +
               "! It's a fruit of " +
-              effectNames[eatFruit[randomFruit].name] +
+              effectNames[randomFruit] +
               "!",
             "gold"
           );
