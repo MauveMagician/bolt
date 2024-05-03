@@ -1544,19 +1544,21 @@ class Player {
     if (index !== -1) {
       this.inventory.splice(index, 1);
     }
+    let hitEnemy = false;
     enemies.forEach((enemy) => {
       if (enemy.x === newX && enemy.y === newY && enemy.lives > 0) {
         eat(enemy, fruit);
         if (player.passives.includes("Confuse throw")) {
           confusion(enemy);
         }
+        hitEnemy = true;
         return;
       }
     });
-    if (generatedMap[newKey] !== "🟫") {
+    if (generatedMap[newKey] !== "🟫" && !hitEnemy) {
       return this.throwFruit(fruit, direction, newX, newY);
     } else {
-      if (generatedMap[newKey] === "🟫") {
+      if (generatedMap[newKey] === "🟫" && !hitEnemy) {
         log("The " + fruitNames[fruit] + " hits a wall!", "#EE82EE");
         const key = x + "," + y;
         if (generatedMap[key] === "⬛️") {
