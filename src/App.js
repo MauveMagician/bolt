@@ -16,6 +16,7 @@ let TO_LEVEL_3 = 8;
 let TO_LEVEL_4 = 16;
 let selectedAnimal = "🐶";
 const ASCEND_LEVEL = 16;
+const LIVES_CAP = 6;
 const generatedMap = {};
 let freeCells = [];
 const enemies = [];
@@ -75,24 +76,7 @@ const effects = [
   fire,
   luck,
 ];
-const effectNames = {
-  healing: "healing",
-  extraHealing: "extraHealing",
-  poison: "poison",
-  haste: "haste",
-  might: "might",
-  confusion: "confusion",
-  flying: "flying",
-  mutation: "mutation",
-  slowing: "slowing",
-  invunlerability: "invunlerability",
-  weakness: "weakness",
-  beasthood: "beasthood",
-  cancellation: "cancellation",
-  sleeping: "sleeping",
-  fire: "fire",
-  luck: "luck",
-};
+const effectNames = {};
 const weapons = [
   "🗡️", // Dagger
   "⚔️", // Double Sword
@@ -149,6 +133,10 @@ class Enemy {
     return this.speed;
   }
   beHit(attacker) {
+    if (this.passives.includes("Invulnerable")) {
+      log(this.name + " shrugs off " + attacker.name + "'s attack", "#B0C4DE");
+      return;
+    }
     let rollValue = d6();
     if (
       attacker.passives.includes("TwoWeapon") ||
@@ -335,7 +323,19 @@ class Enemy {
       this.tempTick();
     }
   }
+
+  burn() {
+    this.lives -= 1;
+    log(this.name + " is hurt by burning!", "#FF4500");
+    if (this.lives <= 0) {
+      this.die();
+    }
+  }
+
   tempTick() {
+    if (this.passives.includes("On fire")) {
+      this.burn();
+    }
     for (let key in this.tempEffects) {
       // Access the key and value of the dictionary
       this.tempEffects[key] -= 1;
@@ -478,7 +478,7 @@ function nextLevel() {
   populateHoles();
   if (dungeonLevel >= ASCEND_LEVEL) {
     log(dungeonLevel, "white");
-    log("You sense your ultimate goal", "gold");
+    log(player.name + " senses their ultimate goal", "gold");
     placeTrophy();
   }
   const goblins = [];
@@ -517,11 +517,59 @@ function shuffleArray(array) {
 function randomizeFruit() {
   // Shuffle fruits and effects arrays
   shuffleArray(fruit);
-  shuffleArray(effects);
-
   // Initialize eatFruit dictionary
   for (let i = 0; i < fruit.length; i++) {
     eatFruit[fruit[i]] = effects[i];
+    switch (i) {
+      case 0:
+        effectNames[i] = "healing";
+        break;
+      case 1:
+        effectNames[i] = "extra healing";
+        break;
+      case 2:
+        effectNames[i] = "poison";
+        break;
+      case 3:
+        effectNames[i] = "haste";
+        break;
+      case 4:
+        effectNames[i] = "might";
+        break;
+      case 5:
+        effectNames[i] = "confusion";
+        break;
+      case 6:
+        effectNames[i] = "flying";
+        break;
+      case 7:
+        effectNames[i] = "mutation";
+        break;
+      case 8:
+        effectNames[i] = "slowing";
+        break;
+      case 9:
+        effectNames[i] = "invulnerability";
+        break;
+      case 10:
+        effectNames[i] = "weakness";
+        break;
+      case 11:
+        effectNames[i] = "beasthood";
+        break;
+      case 12:
+        effectNames[i] = "cancellation";
+        break;
+      case 13:
+        effectNames[i] = "sleeping";
+        break;
+      case 14:
+        effectNames[i] = "fire";
+        break;
+      case 15:
+        effectNames[i] = "luck";
+        break;
+    }
   }
 }
 
@@ -989,6 +1037,10 @@ class Player {
   }
 
   burn() {
+    document.querySelector(".App").classList.add("shake");
+    setTimeout(() => {
+      document.querySelector(".App").classList.remove("shake");
+    }, 200);
     this.lives -= 1;
     log(this.name + " is hurt by burning!", "#FF4500");
     if (this.lives == 1) {
@@ -1042,6 +1094,26 @@ class Player {
       healing(this, 1);
       return true;
     }
+    if (this.ground === "📦") {
+      if (this.wear === "") {
+        this.ground = "⬛️";
+      } else {
+        this.ground = this.wear;
+        this.unequip("📦");
+      }
+      this.wear = "📦";
+      return true;
+    } else if (weapons.includes(this.ground)) {
+      var weapon = this.ground;
+      if (this.wield === "") {
+        this.ground = "⬛️";
+      } else {
+        this.ground = this.wield;
+        this.unwield();
+      }
+      this.wieldWeapon(weapon);
+      return true;
+    }
     if (
       fruit.includes(this.ground) &&
       this.inventory.length < MAX_INVENTORY_SIZE
@@ -1066,26 +1138,6 @@ class Player {
     } else if (this.inventory.length >= MAX_INVENTORY_SIZE) {
       log(this.name + " has too many items!", "#F08080");
       return false;
-    }
-    if (this.ground === "📦") {
-      if (this.wear === "") {
-        this.ground = "⬛️";
-      } else {
-        this.ground = this.wear;
-        this.unequip("📦");
-      }
-      this.wear = "📦";
-      return true;
-    } else if (weapons.includes(this.ground)) {
-      var weapon = this.ground;
-      if (this.wield === "") {
-        this.ground = "⬛️";
-      } else {
-        this.ground = this.wield;
-        this.unwield();
-      }
-      this.wieldWeapon(weapon);
-      return true;
     }
     return false;
   }
@@ -1136,6 +1188,9 @@ class Player {
   }
 
   tempTick() {
+    if (player.passives.includes("On fire")) {
+      player.burn();
+    }
     if (!this.incombat) {
       this.lives = Math.min(this.maxLives, this.lives + 1);
       this.luck = Math.min(this.maxLuck, this.luck + 1);
@@ -1415,9 +1470,6 @@ class Player {
       if (confusion) {
         log(this.name + " tries to move into a wall!", "#EE82EE");
         window.removeEventListener("keydown", this);
-        if (player.passives.includes("On fire")) {
-          player.burn();
-        }
         engine.unlock();
       }
       if (
@@ -1439,9 +1491,6 @@ class Player {
           attack = true;
           player.attack(enemy);
           window.removeEventListener("keydown", this);
-          if (player.passives.includes("On fire")) {
-            player.burn();
-          }
           engine.unlock();
           return;
         }
@@ -1454,9 +1503,6 @@ class Player {
       this._y = newY;
       this._draw(); // Draw the player at the new position
       window.removeEventListener("keydown", this);
-      if (player.passives.includes("On fire")) {
-        player.burn();
-      }
       if (this.passives.includes("Pounce")) {
         const pounce_x = this._x + diff[0];
         const pounce_y = this._y + diff[1];
@@ -1493,7 +1539,21 @@ class Player {
     var newX = x + ROT.DIRS[8][direction][0];
     var newY = y + ROT.DIRS[8][direction][1];
     var newKey = newX + "," + newY;
-    if (generatedMap[newKey] === "⬛️") {
+    // Remove the thrown fruit from the player's inventory
+    const index = this.inventory.indexOf(fruit);
+    if (index !== -1) {
+      this.inventory.splice(index, 1);
+    }
+    enemies.forEach((enemy) => {
+      if (enemy.x === newX && enemy.y === newY && enemy.lives > 0) {
+        eat(enemy, fruit);
+        if (player.passives.includes("Confuse throw")) {
+          confusion(enemy);
+        }
+        return;
+      }
+    });
+    if (generatedMap[newKey] !== "🟫") {
       return this.throwFruit(fruit, direction, newX, newY);
     } else {
       if (generatedMap[newKey] === "🟫") {
@@ -1504,20 +1564,6 @@ class Player {
         } else {
           log("The " + fruitNames[fruit] + " goes splat!", "#EE82EE");
         }
-      }
-      enemies.forEach((enemy) => {
-        if (enemy.x === newX && enemy.y === newY && enemy.lives > 0) {
-          eat(enemy, fruit);
-          if (player.passives.includes("Confuse throw")) {
-            confusion(enemy);
-          }
-          return;
-        }
-      });
-      // Remove the thrown fruit from the player's inventory
-      const index = this.inventory.indexOf(fruit);
-      if (index !== -1) {
-        this.inventory.splice(index, 1);
       }
     }
   }
