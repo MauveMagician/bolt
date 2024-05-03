@@ -573,13 +573,13 @@ function randomizeFruit() {
   }
 }
 
-function healing(eater, value = 2) {
+const healing = function healing(eater, value = 2) {
   eater.lives += value;
   if (eater.lives > eater.maxLives) {
     eater.lives = eater.maxLives;
   }
   log(eater.name + " feels better!", "#7FFF00");
-}
+};
 function extraHealing(eater) {
   if (eater.lives >= eater.maxLives) {
     eater.lives += 1;
