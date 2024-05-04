@@ -583,7 +583,11 @@ function healing(eater, value = 2) {
   log(eater.name + " feels better!", "#7FFF00");
 }
 function extraHealing(eater) {
-  if (eater.lives >= eater.maxLives) {
+  if (
+    eater.lives >= eater.maxLives &&
+    eater.maxLives < LIVES_CAP &&
+    d6() > eater.maxLives
+  ) {
     eater.lives += 1;
     eater.maxLives += 1;
     log(eater.name + " feels tougher!", "#7FFF00");
@@ -1539,13 +1543,13 @@ class Player {
     enemy.beHit(player);
   }
 
-  throwFruit(fruit, direction, x = this._x, y = this._y) {
+  throwFruit(fruit, direction, x = this._x, y = this._y, remove = true) {
     var newX = x + ROT.DIRS[8][direction][0];
     var newY = y + ROT.DIRS[8][direction][1];
     var newKey = newX + "," + newY;
     // Remove the thrown fruit from the player's inventory
     const index = this.inventory.indexOf(fruit);
-    if (index !== -1) {
+    if (index !== -1 && remove) {
       this.inventory.splice(index, 1);
     }
     let hitEnemy = false;
@@ -1560,7 +1564,7 @@ class Player {
       }
     });
     if (generatedMap[newKey] !== "🟫" && !hitEnemy) {
-      return this.throwFruit(fruit, direction, newX, newY);
+      return this.throwFruit(fruit, direction, newX, newY, false);
     } else {
       if (generatedMap[newKey] === "🟫" && !hitEnemy) {
         log("The " + fruitNames[fruit] + " hits a wall!", "#EE82EE");
@@ -1595,8 +1599,8 @@ function createPlayer() {
     case "🦝":
       player = new Player(x, y, "🦝", 3, "Max", 3, [], ["Pickup"], 2, 5, 0, [
         "Appraise",
-        "Confuse throw",
         "Fast paws",
+        "Confuse throw",
       ]);
       break;
     case "🐋":
@@ -1760,9 +1764,6 @@ function App() {
     log("Game started!", "#32CD32");
     player.inventory.push(
       Object.keys(eatFruit).find((key) => eatFruit[key] === healing)
-    );
-    player.inventory.push(
-      Object.keys(eatFruit).find((key) => eatFruit[key] === fire)
     );
     setAnimalSelected(true);
   };
@@ -1962,7 +1963,7 @@ function App() {
     return (
       <div
         className="beasthoodContainer"
-        title="Champion beasthood. Attack and be attacked to gain points and go up levels. Champions unlock abilities as they level up. Walking and other actions reduce beasthood points. Passing the turn converts beasthood points into luck."
+        title="Champion beasthood. Attack and be attacked to gain points and go up levels. Champions unlock abilities as they level up. Being out of combat reduces beasthood."
       >
         <div>
           Beast L{player.level} {beasthoodDisplay}
