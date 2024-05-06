@@ -100,7 +100,7 @@ class Enemy {
     name = "goblin",
     toHit = 3,
     speed = 2,
-    passives = []
+    passives = new Set()
   ) {
     this._x = x;
     this._y = y;
@@ -116,7 +116,7 @@ class Enemy {
     this.speed = speed;
     this.defaultSpeed = speed;
     this.passives = passives;
-    this.tempEffects = [];
+    this.tempEffects = new Map();
     enemies.push(this);
   }
   get x() {
@@ -133,30 +133,30 @@ class Enemy {
     return this.speed;
   }
   beHit(attacker) {
-    if (this.passives.includes("Invulnerable")) {
+    if (this.passives.has("Invulnerable")) {
       log(this.name + " shrugs off " + attacker.name + "'s attack", "#B0C4DE");
       return;
     }
     let rollValue = d6();
     if (
-      attacker.passives.includes("TwoWeapon") ||
-      attacker.passives.includes("Weak") ||
-      attacker.passives.includes("Innacuracy")
+      attacker.passives.has("TwoWeapon") ||
+      attacker.passives.has("Weak") ||
+      attacker.passives.has("Innacuracy")
     ) {
       rollValue = Math.min(d6(), d6());
     }
-    if (this.passives.includes("Thick Skin")) {
+    if (this.passives.has("Thick Skin")) {
       rollValue -= 1;
     }
     if (
-      attacker.passives.includes("PlusOne") ||
-      attacker.passives.includes("Keen Eyes") ||
-      this.passives.includes("Soft skin")
+      attacker.passives.has("PlusOne") ||
+      attacker.passives.has("Keen Eyes") ||
+      this.passives.has("Soft skin")
     ) {
       rollValue += 1;
     }
     if (
-      attacker.passives.includes("Luck mastery") &&
+      attacker.passives.has("Luck mastery") &&
       (rollValue === this.toHit - 2 || rollValue === 4) &&
       attacker.luck > 0
     ) {
@@ -173,10 +173,10 @@ class Enemy {
     }
     if (rollValue >= this.toHit) {
       if (
-        (attacker.passives.includes("Mighty") ||
-          attacker.passives.includes("TwoWeapon") ||
-          attacker.passives.includes("Mighty strikes")) &&
-        !attacker.passives.includes("Weak")
+        (attacker.passives.has("Mighty") ||
+          attacker.passives.has("TwoWeapon") ||
+          attacker.passives.has("Mighty strikes")) &&
+        !attacker.passives.has("Weak")
       ) {
         this.lives -= 2;
       } else {
@@ -186,10 +186,10 @@ class Enemy {
         log(attacker.name + " slays the " + this.name + "!", "#FFD700");
         this.die();
       } else if (
-        (attacker.passives.includes("Mighty") ||
-          attacker.passives.includes("TwoWeapon") ||
-          attacker.passives.includes("Mighty strikes")) &&
-        !attacker.passives.includes("Weak")
+        (attacker.passives.has("Mighty") ||
+          attacker.passives.has("TwoWeapon") ||
+          attacker.passives.has("Mighty strikes")) &&
+        !attacker.passives.has("Weak")
       ) {
         log(
           attacker.name + " deals a mighty blow to the " + this.name + "!",
@@ -256,11 +256,11 @@ class Enemy {
     }
   }
   act() {
-    if (this.passives.includes("Asleep")) {
+    if (this.passives.has("Asleep")) {
       this.tempTick();
       return;
     }
-    if (this.passives.includes("Confused")) {
+    if (this.passives.has("Confused")) {
       const dir = Math.floor(ROT.RNG.getUniform() * 8);
       const newX = this._x + ROT.DIRS[8][dir][0];
       const newY = this._y + ROT.DIRS[8][dir][1];
@@ -297,7 +297,7 @@ class Enemy {
       );
     };
     var astar = new ROT.Path.AStar(x, y, passableCallback, {
-      topology: this.passives.includes("Orthogonal") ? 4 : 8,
+      topology: this.passives.has("Orthogonal") ? 4 : 8,
     });
     var path = [];
     var pathCallback = function (x, y) {
@@ -308,7 +308,7 @@ class Enemy {
       this.path = path.slice(0); // Store the computed path for the goblin
       this.path.shift();
       if (this.path.length === 1) {
-        if (this.passives.includes("Enfeebling strikes") && d6() >= 6) {
+        if (this.passives.has("Enfeebling strikes") && d6() >= 6) {
           weakness(player);
         }
         player.beHit(this);
@@ -332,22 +332,18 @@ class Enemy {
   }
 
   tempTick() {
-    if (this.passives.includes("On fire")) {
+    if (this.passives.has("On fire")) {
       this.burn();
     }
-    for (let key in this.tempEffects) {
-      // Access the key and value of the dictionary
-      this.tempEffects[key] -= 1;
-      if (this.tempEffects[key] <= 0) {
+    for (let key of this.tempEffects.keys()) {
+      this.tempEffects.set(key, this.tempEffects.get(key) - 1);
+      if (this.tempEffects.get(key) <= 0) {
         if (key === "Hasted" || key === "Slowed") {
           this.speed = this.defaultSpeed;
         }
-        delete this.tempEffects[key];
-        const passiveIndex = this.passives.indexOf(key);
-        if (passiveIndex !== -1) {
-          this.passives.splice(passiveIndex);
-          log(this.name + " is no longer affected by " + key, "SkyBlue");
-        }
+        this.tempEffects.delete(key);
+        this.passives.delete(key);
+        log(this.name + " is no longer affected by " + key, "SkyBlue");
       }
     }
   }
@@ -362,7 +358,7 @@ class GridBug extends Enemy {
     name = "grid bug",
     toHit = 2,
     speed = 2,
-    passives = ["Orthogonal", "Mighty strikes"]
+    passives = new Set(["Orthogonal"], ["Mighty strikes"])
   ) {
     super(x, y, emoji, maxLives, name, toHit, speed, passives);
   }
@@ -377,7 +373,7 @@ class Goblin extends Enemy {
     name = "goblin",
     toHit = 3,
     speed = 2,
-    passives = []
+    passives = new Set()
   ) {
     super(x, y, emoji, maxLives, name, toHit, speed, passives);
   }
@@ -392,7 +388,7 @@ class Ogre extends Enemy {
     name = "ogre",
     toHit = 4,
     speed = 1,
-    passives = ["Mighty strikes"]
+    passives = new Set(["Mighty strikes"])
   ) {
     super(x, y, emoji, maxLives, name, toHit, speed, passives);
   }
@@ -407,7 +403,7 @@ class Cockroach extends Enemy {
     name = "cockroach",
     toHit = 4,
     speed = 2,
-    passives = ["Enfeebling strikes"]
+    passives = new Set(["Enfeebling strikes"])
   ) {
     super(x, y, emoji, maxLives, name, toHit, speed, passives);
   }
@@ -422,7 +418,7 @@ class Mosquito extends Enemy {
     name = "mosquito",
     toHit = 2,
     speed = 3,
-    passives = ["Blood draining"]
+    passives = new Set(["Blood draining"])
   ) {
     super(x, y, emoji, maxLives, name, toHit, speed, passives);
   }
@@ -437,7 +433,7 @@ class Dragon extends Enemy {
     name = "dragon",
     toHit = 4,
     speed = 3,
-    passives = ["Mighty strikes"]
+    passives = new Set(["Mighty strikes"])
   ) {
     super(x, y, emoji, maxLives, name, toHit, speed, passives);
   }
@@ -608,38 +604,38 @@ function poison(eater) {
 }
 
 function haste(eater) {
-  if (eater.passives.includes("Hasted")) {
+  if (eater.passives.has("Hasted")) {
     log(eater.name + " is even faster!", "#00FFFF");
     eater.speed = 5;
     return;
   }
-  if (eater.passives.includes("Slowed")) {
-    eater.passives.splice(eater.passives.indexOf("Slowed"), 1);
-    delete eater.tempEffects["Slowed"];
+  if (eater.passives.has("Slowed")) {
+    eater.passives.delete("Slowed");
+    eater.tempEffects.delete("Slowed");
     log(eater.name + " is no longer slow!", "#00FFFF");
     eater.speed = eater.defaultSpeed;
     return;
   }
-  eater.passives.push("Hasted");
+  eater.passives.add("Hasted");
   const duration = d6() + d6() + 6;
   eater.speed = 4;
-  eater.tempEffects["Hasted"] = duration;
+  eater.tempEffects.set("Hasted", duration);
   log(eater.name + " is fast for " + duration + " turns!", "#00FFFF");
 }
 function might(eater) {
-  eater.passives.push("Mighty");
+  eater.passives.add("Mighty");
   const duration = d6() + d6() + 6;
   eater.tempEffects["Mighty"] = duration;
   log(eater.name + " is powerful for " + duration + " turns!", "#00BFFF");
 }
 function confusion(eater) {
-  eater.passives.push("Confused");
+  eater.passives.add("Confused");
   const duration = d6() + 6;
   eater.tempEffects["Confused"] = duration;
   log(eater.name + " is confused for " + duration + " turns!", "#FF00FF");
 }
 function flying(eater) {
-  eater.passives.push("Flying");
+  eater.passives.add("Flying");
   const duration = d6() + d6() + 6;
   eater.tempEffects["Flying"] = duration;
   log(eater.name + " is flying for " + duration + " turns!", "#87CEFA");
@@ -657,7 +653,7 @@ function mutation(eater) {
         log(eater.name + " becomes tougher!", "#DDA0DD");
         break;
       case 2:
-        eater.passives.push("Keen Eyes");
+        eater.passives.add("Keen Eyes");
         log(eater.name + " acquires keen accuracy!", "#DDA0DD");
         break;
       case 3:
@@ -672,7 +668,7 @@ function mutation(eater) {
         }
         break;
       case 4:
-        eater.passives.push("Thick skin");
+        eater.passives.add("Thick skin");
         log(eater.name + "'s skin thickens!", "#DDA0DD");
         break;
       case 5:
@@ -708,7 +704,7 @@ function mutation(eater) {
         log(eater.name + " becomes flimsy!", "#DDA0DD");
         break;
       case 2:
-        eater.passives.push("Innacuracy");
+        eater.passives.add("Innacuracy");
         log(eater.name + " loses accuracy!", "#DDA0DD");
         break;
       case 3:
@@ -723,7 +719,7 @@ function mutation(eater) {
         }
         break;
       case 4:
-        eater.passives.push("Soft skin");
+        eater.passives.add("Soft skin");
         log(eater.name + " becomes easier to hit!", "#DDA0DD");
         break;
       case 5:
@@ -738,25 +734,25 @@ function mutation(eater) {
   }
 }
 function slowing(eater) {
-  if (eater.passives.includes("Slowed")) {
+  if (eater.passives.has("Slowed")) {
     log(eater.name + " can't get any slower!", "#00FFFF");
     return;
   }
-  if (eater.passives.includes("Hasted")) {
-    eater.passives.splice(eater.passives.indexOf("Hasted"), 1);
+  if (eater.passives.has("Hasted")) {
+    eater.passives.delete("Hasted");
     delete eater.tempEffects["Hasted"];
     log(eater.name + " is no longer hasted!", "#00FFFF");
     eater.speed = eater.defaultSpeed;
     return;
   }
-  eater.passives.push("Slowed");
+  eater.passives.add("Slowed");
   const duration = d6() + d6() + 6;
   eater.speed = 1;
   eater.tempEffects["Slowed"] = duration;
   log(eater.name + " is slow for " + duration + " turns!", "#00FFFF");
 }
 function invunlerability(eater) {
-  eater.passives.push("Invulnerable");
+  eater.passives.add("Invulnerable");
   const duration = d6() + d6() + 6;
   eater.tempEffects["Invulnerable"] = duration;
   log(
@@ -765,7 +761,7 @@ function invunlerability(eater) {
   );
 }
 function weakness(eater) {
-  eater.passives.push("Weak");
+  eater.passives.add("Weak");
   const duration = d6() + d6() + 6;
   eater.tempEffects["Weak"] = duration;
   log(eater.name + " becomes weakened for " + duration + " turns!", "#8B0000");
@@ -782,37 +778,39 @@ function beasthood(eater) {
   }
 }
 function cancellation(eater) {
-  if (Object.keys(eater.tempEffects).length === 0) {
-    if (eater.passives.length > 0) {
-      const filteredPassives = eater.passives.filter(
+  if (eater.tempEffects.size === 0) {
+    if (eater.passives.size > 0) {
+      const nonPermanentPassives = Array.from(eater.passives).filter(
         (passive) => passive !== "TwoWeapon" && passive !== "PlusOne"
       );
-      if (filteredPassives.length > 0) {
-        const randomIndex = Math.floor(Math.random() * filteredPassives.length);
-        const removedPassive = filteredPassives.splice(randomIndex, 1)[0];
-        eater.passives = filteredPassives;
+      if (nonPermanentPassives.length > 0) {
+        const randomIndex = Math.floor(
+          Math.random() * nonPermanentPassives.length
+        );
+        const removedPassive = nonPermanentPassives[randomIndex];
+        eater.passives.delete(removedPassive);
         log(eater.name + " loses the passive: " + removedPassive, "#9932CC");
         return;
       }
     }
   } else {
-    for (let effect in eater.tempEffects) {
-      delete eater.tempEffects[effect]; // Remove the effect from tempEffects
-      eater.passives = eater.passives.filter((passive) => passive !== effect); // Filter out the passive from passives
-    }
+    eater.tempEffects.forEach((value, effect) => {
+      eater.tempEffects.delete(effect);
+      eater.passives.delete(effect);
+    });
     log(eater.name + "'s temporary effects are cancelled!", "#9932CC");
     return;
   }
   log(eater.name + " is cancelled, but loses nothing", "#9932CC");
 }
 function sleeping(eater) {
-  eater.passives.push("Asleep");
+  eater.passives.add("Asleep");
   const duration = d6() + 3;
   eater.tempEffects["Asleep"] = duration;
   log(eater.name + " falls asleep for " + duration + " turns!", "#AFEEEE");
 }
 function fire(eater) {
-  eater.passives.push("On fire");
+  eater.passives.add("On fire");
   const duration = Infinity;
   eater.tempEffects["On fire"] = duration;
   log(eater.name + " is on fire until they pass their turn!", "#FF4500");
@@ -828,7 +826,7 @@ function luck(eater) {
       log(eater.name + "'s luck is refilled!", "#7FFF00");
     }
   } else {
-    eater.passives.push("Luck");
+    eater.passives.add("Luck");
     log(eater.name + " feels luckier!", "#7FFF00");
   }
 }
@@ -856,7 +854,7 @@ class Player {
     name = "Bolt",
     toHit = 4,
     inventory = [],
-    passives = ["Bone chewer"],
+    passives = new Set(["Bone chewer"]),
     speed = 2,
     maxLuck = 4,
     minBeasthood = 0,
@@ -875,7 +873,7 @@ class Player {
     this.wear = "";
     this.inventory = inventory;
     this.passives = passives;
-    this.tempEffects = {};
+    this.tempEffects = new Map();
     this.speed = speed;
     this.defaultSpeed = speed;
     this.luck = maxLuck;
@@ -914,24 +912,24 @@ class Player {
       if (this.beasthood >= TO_LEVEL_4 && this.level < 4) {
         log(this.name + " advances to level 4!", "#FF69B4");
         this.level = 4;
-        this.passives.push(this.levelBenefits[2]);
-        if (!this.passives.includes(this.levelBenefits[1])) {
-          this.passives.push(this.levelBenefits[1]);
+        this.passives.add(this.levelBenefits[2]);
+        if (!this.passives.has(this.levelBenefits[1])) {
+          this.passives.add(this.levelBenefits[1]);
         }
-        if (!this.passives.includes(this.levelBenefits[0])) {
-          this.passives.push(this.levelBenefits[0]);
+        if (!this.passives.has(this.levelBenefits[0])) {
+          this.passives.add(this.levelBenefits[0]);
         }
       } else if (this.beasthood >= TO_LEVEL_3 && this.level < 3) {
         log(this.name + " advances to level 3!", "#FF69B4");
         this.level = 3;
-        this.passives.push(this.levelBenefits[1]);
-        if (!this.passives.includes(this.levelBenefits[0])) {
-          this.passives.push(this.levelBenefits[0]);
+        this.passives.add(this.levelBenefits[1]);
+        if (!this.passives.has(this.levelBenefits[0])) {
+          this.passives.add(this.levelBenefits[0]);
         }
       } else if (this.beasthood >= TO_LEVEL_2 && this.level < 2) {
         log(this.name + " advances to level 2!", "#FF69B4");
         this.level = 2;
-        this.passives.push(this.levelBenefits[0]);
+        this.passives.add(this.levelBenefits[0]);
       }
     }
   }
@@ -945,36 +943,18 @@ class Player {
       if (this.beasthood < TO_LEVEL_2 && this.level > 1) {
         log(this.name + " regresses to level 1!", "#FF7F50");
         this.level = 1;
-        let index = this.passives.indexOf(this.levelBenefits[0]);
-        if (index !== -1) {
-          this.passives.splice(index, 1);
-        }
-        index = this.passives.indexOf(this.levelBenefits[1]);
-        if (index !== -1) {
-          this.passives.splice(index, 1);
-        }
-        index = this.passives.indexOf(this.levelBenefits[2]);
-        if (index !== -1) {
-          this.passives.splice(index, 1);
-        }
+        this.passives.delete(this.levelBenefits[0]);
+        this.passives.delete(this.levelBenefits[1]);
+        this.passives.delete(this.levelBenefits[2]);
       } else if (this.beasthood < TO_LEVEL_3 && this.level > 2) {
         log(this.name + " regresses to level 2!", "#FF7F50");
         this.level = 2;
-        let index = this.passives.indexOf(this.levelBenefits[1]);
-        if (index !== -1) {
-          this.passives.splice(index, 1);
-        }
-        index = this.passives.indexOf(this.levelBenefits[2]);
-        if (index !== -1) {
-          this.passives.splice(index, 1);
-        }
+        this.passives.delete(this.levelBenefits[1]);
+        this.passives.delete(this.levelBenefits[2]);
       } else if (this.beasthood < TO_LEVEL_4 && this.level > 3) {
         log(this.name + " regresses to level 3!", "#FF7F50");
         this.level = 3;
-        let index = this.passives.indexOf(this.levelBenefits[2]);
-        if (index !== -1) {
-          this.passives.splice(index, 1);
-        }
+        this.passives.delete(this.levelBenefits[2]);
       }
     }
   }
@@ -982,34 +962,34 @@ class Player {
   beHit(enemy) {
     this.incombat = true;
     this.combat_timer = 6;
-    if (this.passives.includes("Invulnerable")) {
+    if (this.passives.has("Invulnerable")) {
       log(this.name + " shrugs off the " + enemy.name + "'s attack", "#B0C4DE");
       return;
     }
     let rollValue = d6();
     if (
-      enemy.passives.includes("TwoWeapon") ||
-      enemy.passives.includes("Weak") ||
-      enemy.passives.includes("Innacuracy") ||
-      this.passives.includes("Great defense")
+      enemy.passives.has("TwoWeapon") ||
+      enemy.passives.has("Weak") ||
+      enemy.passives.has("Innacuracy") ||
+      this.passives.has("Great defense")
     ) {
       rollValue = Math.min(d6(), d6());
     }
     if (
-      enemy.passives.includes("Lucky") ||
-      enemy.passives.includes("Keen Eyes") ||
-      this.passives.includes("Soft Skin")
+      enemy.passives.has("Lucky") ||
+      enemy.passives.has("Keen Eyes") ||
+      this.passives.has("Soft Skin")
     ) {
       rollValue += 1;
     }
-    if (this.passives.includes("Thick Skin")) {
+    if (this.passives.has("Thick Skin")) {
       rollValue -= 1;
     }
     this.beasthoodUp(1);
     if (rollValue >= this.toHit) {
       if (
-        enemy.passives.includes("Mighty") ||
-        enemy.passives.includes("Mighty strikes")
+        enemy.passives.has("Mighty") ||
+        enemy.passives.has("Mighty strikes")
       ) {
         this.lives -= 2;
         log(
@@ -1026,7 +1006,7 @@ class Player {
       if (this.lives <= 0) {
         this.die();
       }
-      if (enemy.passives.includes("Blood draining")) {
+      if (enemy.passives.has("Blood draining")) {
         log(enemy.name + " drains " + this.name + "'s blood!", "red");
         healing(enemy, 1);
       }
@@ -1057,7 +1037,7 @@ class Player {
   }
 
   die() {
-    if (this.passives.includes("Many lives")) {
+    if (this.passives.has("Many lives")) {
       log(this.name + " is slain but has many lives!", "#FF1493");
       this.beasthoodDown(Infinity);
       if (this.maxLives < 1) {
@@ -1093,7 +1073,7 @@ class Player {
       nextLevel();
       return true;
     }
-    if (this.passives.includes("Bone chewer") && this.ground === "🦴") {
+    if (this.passives.has("Bone chewer") && this.ground === "🦴") {
       this.ground = "⬛️";
       log(this.name + " chews on a bone!", "white");
       healing(this, 1);
@@ -1166,31 +1146,31 @@ class Player {
     if (item === "🗡️") {
       log("Dagger equipped", "white");
       this.wield = "🗡️";
-      this.passives.push("PlusOne");
+      this.passives.add("PlusOne");
       log("You are now attacking at a +1", "cyan");
     }
     if (item === "⚔️") {
       log("Double Sword equipped", "white");
       this.wield = "⚔️";
-      this.passives.push("TwoWeapon");
+      this.passives.add("TwoWeapon");
       log("You are innacurate but mighty", "cyan");
     }
     if (item === "🪚") {
       log("Painsaw equipped", "white");
       this.wield = "🪚";
-      this.passives.push("Painsaw");
+      this.passives.add("Painsaw");
       log("You are now attacking at a +1", "cyan");
     }
     if (item === "🔪") {
       log("Knife equipped", "white");
       this.wield = "🔪";
-      this.passives.push("Stabbing");
+      this.passives.add("Stabbing");
       log("Move towards foes to make free attacks", "cyan");
     }
     if (item === "⛏️") {
       log("Pickaxe equipped", "white");
       this.wield = "⛏️";
-      this.passives.push("Mining");
+      this.passives.add("Mining");
       log("You can break walls by attacking them", "cyan");
     }
   }
@@ -1199,21 +1179,15 @@ class Player {
     // Logic to unequip the item
     // Example: When unequipping a dagger, remove the "PlusOne" passive ability
     if (this.wield === "🗡️") {
-      const index = this.passives.indexOf("PlusOne");
-      if (index !== -1) {
-        this.passives.splice(index, 1);
-      }
+      this.passives.delete("PlusOne");
     }
     if (this.wield === "⚔️") {
-      const index = this.passives.indexOf("TwoWeapon");
-      if (index !== -1) {
-        this.passives.splice(index, 1);
-      }
+      this.passives.delete("TwoWeapon");
     }
   }
 
   act() {
-    if (this.passives.includes("Asleep")) {
+    if (this.passives.has("Asleep")) {
       log(this.name + " is asleep", "red");
     } else {
       engine.lock();
@@ -1235,21 +1209,17 @@ class Player {
       }
     }
     for (let key in this.tempEffects) {
-      // Access the key and value of the dictionary
       this.tempEffects[key] -= 1;
       if (this.tempEffects[key] <= 0) {
         if (key === "Hasted" || key === "Slowed") {
           this.speed = this.defaultSpeed;
         }
         delete this.tempEffects[key];
-        const passiveIndex = this.passives.indexOf(key);
-        if (passiveIndex !== -1) {
-          this.passives.splice(passiveIndex, 1);
-          log(this.name + " is no longer affected by " + key, "SkyBlue");
-        }
+        this.passives.delete(key);
+        log(this.name + " is no longer affected by " + key, "SkyBlue");
       }
     }
-    if (this.passives.includes("On fire")) {
+    if (this.passives.has("On fire")) {
       this.burn();
     }
   }
@@ -1285,9 +1255,9 @@ class Player {
     keyMap[69] = 8;
     keyMap[70] = 8;
     if (
-      this.passives.includes("Sapper") ||
-      this.passives.includes("Appraise") ||
-      this.passives.includes("Ultrasonic Blast")
+      this.passives.has("Sapper") ||
+      this.passives.has("Appraise") ||
+      this.passives.has("Ultrasonic Blast")
     ) {
       keyMap[82] = 8;
     }
@@ -1318,7 +1288,7 @@ class Player {
     }
     if (code === 82) {
       let action = false;
-      if (this.passives.includes("Ultrasonic Blast")) {
+      if (this.passives.has("Ultrasonic Blast")) {
         log(this.name + " lets loose an ultrasonic blast!", "gold");
         enemies.forEach((enemy) => {
           if (
@@ -1332,15 +1302,15 @@ class Player {
         this.beasthoodDown(3);
         action = true;
       }
-      if (this.passives.includes("Sapper") && this.ground === "⬛️") {
+      if (this.passives.has("Sapper") && this.ground === "⬛️") {
         log(this.name + " digs a hole!", "gold");
         this.beasthoodDown(Infinity);
         this.ground = "🕳️";
         action = true;
-      } else if (this.passives.includes("Sapper") && this.ground !== "⬛️") {
+      } else if (this.passives.has("Sapper") && this.ground !== "⬛️") {
         log(this.name + " can't dig if stuff is on the floor", "#F0E68C");
       }
-      if (this.passives.includes("Appraise")) {
+      if (this.passives.has("Appraise")) {
         if (player.inventory.length > 0) {
           var randomIndex = Math.floor(Math.random() * player.inventory.length);
           var randomFruit = player.inventory[randomIndex];
@@ -1368,7 +1338,7 @@ class Player {
     }
     if (code === 81) {
       if (player.useGround()) {
-        if (!this.passives.includes("Fast paws")) {
+        if (!this.passives.has("Fast paws")) {
           window.removeEventListener("keydown", this);
           engine.unlock();
         }
@@ -1379,7 +1349,7 @@ class Player {
     if (code === 188 || code === 87) {
       // If the comma key is pressed, pass the turn
       window.removeEventListener("keydown", this);
-      if (player.passives.includes("On fire")) {
+      if (player.passives.has("On fire")) {
         player.tempEffects["On fire"] = 0;
       }
       engine.unlock();
@@ -1407,7 +1377,7 @@ class Player {
         }
         eat(player, player.inventory[0]);
         player.inventory.splice(0, 1);
-        if (!this.passives.includes("Fast paws")) {
+        if (!this.passives.has("Fast paws")) {
           window.removeEventListener("keydown", this);
           engine.unlock();
         }
@@ -1429,7 +1399,7 @@ class Player {
         }
         eat(player, player.inventory[1]);
         player.inventory.splice(1, 1);
-        if (!this.passives.includes("Fast paws")) {
+        if (!this.passives.has("Fast paws")) {
           window.removeEventListener("keydown", this);
           engine.unlock();
         }
@@ -1451,7 +1421,7 @@ class Player {
         }
         eat(player, player.inventory[2]);
         player.inventory.splice(2, 1);
-        if (!this.passives.includes("Fast paws")) {
+        if (!this.passives.has("Fast paws")) {
           window.removeEventListener("keydown", this);
           engine.unlock();
         }
@@ -1473,7 +1443,7 @@ class Player {
         }
         eat(player, player.inventory[3]);
         player.inventory.splice(3, 1);
-        if (!this.passives.includes("Fast paws")) {
+        if (!this.passives.has("Fast paws")) {
           window.removeEventListener("keydown", this);
           engine.unlock();
         }
@@ -1483,7 +1453,7 @@ class Player {
       return;
     }
     var confusion = false;
-    if (player.passives.includes("Confused") && Math.random() < 0.5) {
+    if (player.passives.has("Confused") && Math.random() < 0.5) {
       var diff = ROT.DIRS[8][Math.floor(Math.random() * 7) + 1];
       confusion = true;
       log(this.name + " moves randomly due to confusion", "#FF00FF");
@@ -1509,7 +1479,7 @@ class Player {
         engine.unlock();
       }
       if (
-        this.passives.includes("Digger") &&
+        this.passives.has("Digger") &&
         newX != 0 &&
         newY != 0 &&
         newX != 49 &&
@@ -1539,7 +1509,7 @@ class Player {
       this._y = newY;
       this._draw(); // Draw the player at the new position
       window.removeEventListener("keydown", this);
-      if (this.passives.includes("Pounce")) {
+      if (this.passives.has("Pounce")) {
         const pounce_x = this._x + diff[0];
         const pounce_y = this._y + diff[1];
         enemies.forEach((enemy) => {
@@ -1556,7 +1526,7 @@ class Player {
   attack(enemy) {
     const procRoll = d6();
     if (procRoll >= 6) {
-      if (this.passives.includes("Pickup") && this.inventory.length < 4) {
+      if (this.passives.has("Pickup") && this.inventory.length < 4) {
         const randomIndex = Math.floor(Math.random() * fruit.length);
         this.inventory.push(fruit[randomIndex]);
         log(
@@ -1584,7 +1554,7 @@ class Player {
     enemies.forEach((enemy) => {
       if (enemy.x === newX && enemy.y === newY && enemy.lives > 0) {
         eat(enemy, fruit);
-        if (player.passives.includes("Confuse throw")) {
+        if (player.passives.has("Confuse throw")) {
           confusion(enemy);
         }
         hitEnemy = true;
@@ -1618,25 +1588,43 @@ function createPlayer() {
       player = new Player(x, y);
       break;
     case "🐱":
-      player = new Player(x, y, "🐱", 2, "Mimi", 2, [], [], 3, 5, 0, [
+      player = new Player(x, y, "🐱", 2, "Mimi", 2, [], new Set(), 3, 5, 0, [
         "Pounce",
         "Luck mastery",
         "Many lives",
       ]);
       break;
     case "🦝":
-      player = new Player(x, y, "🦝", 3, "Max", 3, [], ["Pickup"], 2, 5, 0, [
-        "Appraise",
-        "Fast paws",
-        "Confuse throw",
-      ]);
+      player = new Player(
+        x,
+        y,
+        "🦝",
+        3,
+        "Max",
+        3,
+        [],
+        new Set(["Pickup"]),
+        2,
+        5,
+        0,
+        ["Appraise", "Fast paws", "Confuse throw"]
+      );
       break;
     case "🐋":
-      player = new Player(x, y, "🐋", 4, "Wave", 4, [], ["Aquatic"], 2, 4, 0, [
-        "Mighty strikes",
-        "Great defense",
-        "Ultrasonic Blast",
-      ]);
+      player = new Player(
+        x,
+        y,
+        "🐋",
+        4,
+        "Wave",
+        4,
+        [],
+        new Set(["Aquatic"]),
+        2,
+        4,
+        0,
+        ["Mighty strikes", "Great defense", "Ultrasonic Blast"]
+      );
       break;
     default:
       player = new Player(x, y, selectedAnimal, 3);
@@ -1790,6 +1778,7 @@ function App() {
   const selectAnimal = () => {
     initializeGame();
     log("Game started!", "#32CD32");
+    console.log(enemies);
     player.inventory.push(
       Object.keys(eatFruit).find((key) => eatFruit[key] === healing)
     );
