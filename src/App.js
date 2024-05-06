@@ -80,7 +80,7 @@ const effectNames = {};
 const weapons = [
   "🗡️", // Dagger
   "⚔️", // Double Sword
-  "🔫", // Gun
+  "🪚", // Painsaw
   "🏹", // Bow and Arrow
   "🪓", // Axe
   "🔨", // Hammer
@@ -88,7 +88,7 @@ const weapons = [
   "🎸", // Guitar
   "🔪", // Kitchen Knife
   "🛡️", // Shield
-  "🧤", // Gloves
+  "🥊", // Glove
 ];
 
 class Enemy {
@@ -325,13 +325,10 @@ class Enemy {
   }
 
   burn() {
-    this.lives -= 1;
-    if (this.lives <= 0) {
-      this.die();
-      log(this.name + " burns to death!", "#FF4500");
-      return;
+    if (this.lives > 1) {
+      this.lives -= 1;
+      log(this.name + " is hurt by burning!", "#FF4500");
     }
-    log(this.name + " is hurt by burning!", "#FF4500");
   }
 
   tempTick() {
@@ -348,7 +345,7 @@ class Enemy {
         delete this.tempEffects[key];
         const passiveIndex = this.passives.indexOf(key);
         if (passiveIndex !== -1) {
-          this.passives.splice(passiveIndex, 1);
+          this.passives.splice(passiveIndex);
           log(this.name + " is no longer affected by " + key, "SkyBlue");
         }
       }
@@ -422,7 +419,7 @@ class Mosquito extends Enemy {
     y,
     emoji = "🦟",
     maxLives = 2,
-    name = "cockroach",
+    name = "mosquito",
     toHit = 2,
     speed = 3,
     passives = ["Blood draining"]
@@ -436,11 +433,11 @@ class Dragon extends Enemy {
     x,
     y,
     emoji = "🐉",
-    maxLives = 10,
+    maxLives = 16,
     name = "dragon",
     toHit = 4,
     speed = 3,
-    passives = []
+    passives = ["Mighty strikes"]
   ) {
     super(x, y, emoji, maxLives, name, toHit, speed, passives);
   }
@@ -1150,6 +1147,19 @@ class Player {
     return false;
   }
 
+  /*
+  "🗡️", // Dagger
+  "⚔️", // Double Sword
+  "🪚", // Painsaw
+  "🏹", // Bow and Arrow
+  "🪓", // Axe
+  "🔨", // Hammer
+  "⛏️", // Pick
+  "🎸", // Guitar
+  "🔪", // Kitchen Knife
+  "🛡️", // Shield
+  "🥊", // Glove
+  */
   wieldWeapon(item) {
     // Logic to equip the item
     // Example: When equipping a dagger, add the "PlusOne" passive ability
@@ -1164,6 +1174,24 @@ class Player {
       this.wield = "⚔️";
       this.passives.push("TwoWeapon");
       log("You are innacurate but mighty", "cyan");
+    }
+    if (item === "🪚") {
+      log("Painsaw equipped", "white");
+      this.wield = "🪚";
+      this.passives.push("Painsaw");
+      log("You are now attacking at a +1", "cyan");
+    }
+    if (item === "🔪") {
+      log("Knife equipped", "white");
+      this.wield = "🔪";
+      this.passives.push("Stabbing");
+      log("Move towards foes to make free attacks", "cyan");
+    }
+    if (item === "⛏️") {
+      log("Pickaxe equipped", "white");
+      this.wield = "⛏️";
+      this.passives.push("Mining");
+      log("You can break walls by attacking them", "cyan");
     }
   }
 
@@ -1196,9 +1224,6 @@ class Player {
   }
 
   tempTick() {
-    if (this.passives.includes("On fire")) {
-      this.burn();
-    }
     if (!this.incombat) {
       this.lives = Math.min(this.maxLives, this.lives + 1);
       this.luck = Math.min(this.maxLuck, this.luck + 1);
@@ -1223,6 +1248,9 @@ class Player {
           log(this.name + " is no longer affected by " + key, "SkyBlue");
         }
       }
+    }
+    if (this.passives.includes("On fire")) {
+      this.burn();
     }
   }
 
@@ -1896,7 +1924,7 @@ function App() {
   };
 
   const renderLivesContainer = () => {
-    if (player.maxLives > 8) {
+    if (player.maxLives > 4) {
       return (
         <div className="livesContainer">
           <div style={{ verticalAlign: "middle" }}>
@@ -1910,8 +1938,10 @@ function App() {
               }}
             >
               <span style={{ verticalAlign: "middle" }}>❤️</span>
-            </div>{" "}
-            {player.lives}/{player.maxLives}
+            </div>
+            <span className="livesText">
+              {player.lives}/{player.maxLives}
+            </span>
           </div>
         </div>
       );
@@ -2044,11 +2074,21 @@ function App() {
     );
   }
 
+  function renderFloorView() {
+    return (
+      <div className="floorView" title="Your champion's current dungeon level">
+        Dungeon L{dungeonLevel}
+      </div>
+    );
+  }
+
+  function renderScorkeep() {}
+
   const renderLog = () => {
     return (
       <div
         className="log"
-        title="Game log. The last 10 game events are registered here."
+        title="Game log. The last few game events are registered here."
       >
         {logContents.map((message, index) => (
           <div key={index}>{message}</div>
@@ -2069,6 +2109,8 @@ function App() {
             {renderEquipView()}
             {renderInventoryView()}
             {renderGroundView()}
+            {renderFloorView()}
+            {renderScorkeep()}
           </div>
           {renderLog()}
         </div>
