@@ -358,7 +358,7 @@ class GridBug extends Enemy {
     name = "grid bug",
     toHit = 2,
     speed = 2,
-    passives = new Set(["Orthogonal"], ["Mighty strikes"])
+    passives = new Set(["Orthogonal", "Mighty strikes"])
   ) {
     super(x, y, emoji, maxLives, name, toHit, speed, passives);
   }
@@ -472,7 +472,6 @@ function nextLevel() {
   populateItems();
   populateHoles();
   if (dungeonLevel >= ASCEND_LEVEL) {
-    log(dungeonLevel, "white");
     log(player.name + " senses their ultimate goal", "gold");
     placeTrophy();
   }
