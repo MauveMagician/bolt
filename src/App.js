@@ -325,9 +325,11 @@ class Enemy {
   }
 
   burn() {
-    if (this.lives > 1) {
-      this.lives -= 1;
-      log(this.name + " is hurt by burning!", "#FF4500");
+    this.lives -= 1;
+    log(this.name + " is hurt by burning!", "#FF4500");
+    if (this.lives <= 0) {
+      log(this.name + " is slain by burning!", "#FF4500");
+      this.die();
     }
   }
 
