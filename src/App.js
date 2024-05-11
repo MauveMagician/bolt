@@ -645,7 +645,7 @@ function haste(eater) {
   eater.passives.add("Hasted");
   const duration = d6() + d6() + 6;
   eater.speed = 4;
-  eater.tempEffects.set("Hasted", duration);
+  eater.tempEffects["Hasted"] = duration;
   log(eater.name + " is fast for " + duration + " turns!", "#00FFFF");
 }
 function might(eater) {
