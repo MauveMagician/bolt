@@ -1,17 +1,17 @@
 {
   "files": {
-    "main.css": "/bolt/static/css/main.5d787fe8.css",
-    "main.js": "/bolt/static/js/main.c7cd109d.js",
+    "main.css": "/bolt/static/css/main.cf2cf813.css",
+    "main.js": "/bolt/static/js/main.8885b8af.js",
     "static/js/453.f5086a61.chunk.js": "/bolt/static/js/453.f5086a61.chunk.js",
     "static/media/NotoColorEmoji-Regular.ttf": "/bolt/static/media/NotoColorEmoji-Regular.e9859b48089358cdc923.ttf",
     "static/media/EnterCommand-Bold.ttf": "/bolt/static/media/EnterCommand-Bold.99b5f931105e303862ed.ttf",
     "index.html": "/bolt/index.html",
-    "main.5d787fe8.css.map": "/bolt/static/css/main.5d787fe8.css.map",
-    "main.c7cd109d.js.map": "/bolt/static/js/main.c7cd109d.js.map",
+    "main.cf2cf813.css.map": "/bolt/static/css/main.cf2cf813.css.map",
+    "main.8885b8af.js.map": "/bolt/static/js/main.8885b8af.js.map",
     "453.f5086a61.chunk.js.map": "/bolt/static/js/453.f5086a61.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.5d787fe8.css",
-    "static/js/main.c7cd109d.js"
+    "static/css/main.cf2cf813.css",
+    "static/js/main.8885b8af.js"
   ]
 }
