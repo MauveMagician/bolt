@@ -361,13 +361,13 @@ class Enemy {
     if (this.passives.has("On fire")) {
       this.burn();
     }
-    for (let key of this.tempEffects.keys()) {
-      this.tempEffects.set(key, this.tempEffects.get(key) - 1);
-      if (this.tempEffects.get(key) <= 0) {
+    for (let key in this.tempEffects) {
+      this.tempEffects[key] -= 1;
+      if (this.tempEffects[key] <= 0) {
         if (key === "Hasted" || key === "Slowed") {
           this.speed = this.defaultSpeed;
         }
-        this.tempEffects.delete(key);
+        delete this.tempEffects[key];
         this.passives.delete(key);
         log(this.name + " is no longer affected by " + key, "SkyBlue");
       }
@@ -1807,7 +1807,6 @@ function App() {
   const selectAnimal = () => {
     initializeGame();
     log("Game started!", "#32CD32");
-    console.log(enemies);
     player.inventory.push(
       Object.keys(eatFruit).find((key) => eatFruit[key] === healing)
     );
