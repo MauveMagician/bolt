@@ -9,6 +9,7 @@ let player = null;
 let engine = null;
 let scheduler = null;
 let throwing = false;
+let gotTrophy = false;
 let throwingIndex = undefined;
 let dungeonLevel = 1;
 let MAX_LOG_SIZE = 20;
@@ -21,6 +22,7 @@ let selectedAnimal = "🐶";
 const db = getFirestore(app);
 const ASCEND_LEVEL = 16;
 const LIVES_CAP = 6;
+const LUCK_CAP = 16;
 const generatedMap = {};
 let freeCells = [];
 const scoringSequence = [
@@ -455,13 +457,22 @@ class Dragon extends Enemy {
     x,
     y,
     emoji = "🐉",
-    maxLives = 16,
+    maxLives = 1,
     name = "dragon",
     toHit = 4,
-    speed = 3,
+    speed = 2,
     passives = new Set(["Mighty strikes"])
   ) {
-    super(x, y, emoji, maxLives, name, toHit, speed, passives);
+    super(
+      x,
+      y,
+      emoji,
+      Math.min(64, maxLives + dungeonLevel),
+      name,
+      toHit,
+      speed + Math.min(6, Math.floor(dungeonLevel / 10)),
+      passives
+    );
   }
 }
 
@@ -496,14 +507,23 @@ function nextLevel() {
     var cellY = parseInt(cellParts[1]);
     return Math.abs(cellX - x) > 3 || Math.abs(cellY - y) > 3;
   });
-  populateItems();
-  populateHoles();
-  if (dungeonLevel >= ASCEND_LEVEL) {
+  populateItems(dungeonLevel);
+  populateHoles(dungeonLevel);
+  if (dungeonLevel % ASCEND_LEVEL === 0) {
+    log(player.name + " senses a gate home", "gold");
+    placeGate();
+  }
+  if (dungeonLevel % (ASCEND_LEVEL / 4) === 0 && dungeonLevel >= ASCEND_LEVEL) {
     log(player.name + " senses their ultimate goal", "gold");
     placeTrophy();
   }
   const goblins = [];
-  for (let i = 0; i < 10; i++) {
+  const baseMonsters = 10;
+  const levelModifier = Math.floor((dungeonLevel - 1) / 5);
+  const maxModifier = Math.floor((dungeonLevel - 1) / 3) * 3;
+  const numberOfMonsters =
+    baseMonsters + levelModifier + Math.floor((d6() / 6) * maxModifier);
+  for (let i = 0; i < numberOfMonsters; i++) {
     goblins.push(createBeing(Enemy));
   }
   goblins.forEach((element) => {
@@ -843,7 +863,7 @@ function fire(eater) {
 }
 function luck(eater) {
   if ("luck" in eater) {
-    if (eater.luck >= eater.maxLuck) {
+    if (eater.luck >= eater.maxLuck && d6() <= 4 && eater.maxLuck < LUCK_CAP) {
       eater.luck += 1;
       eater.maxLuck += 1;
       log(eater.name + " feels luckier!", "#7FFF00");
@@ -860,6 +880,13 @@ function luck(eater) {
 function eat(eater, fruit) {
   if (eatFruit[fruit]) {
     eatFruit[fruit](eater);
+    if (
+      fruitNames[fruit] &&
+      effectNames[fruit] &&
+      !fruitNames[fruit].includes("(")
+    ) {
+      fruitNames[fruit] += " (" + effectNames[fruit] + ")";
+    }
   }
 }
 
@@ -1080,7 +1107,8 @@ class Player {
     engine.lock();
     score += dungeonLevel * 1000;
     log(
-      this.name + " takes the trophy and finally becomes a true champion!",
+      this.name +
+        " takes the treasure home and finally becomes a true champion!",
       "white"
     );
     log(
@@ -1093,8 +1121,29 @@ class Player {
   }
 
   useGround() {
+    if (this.ground === "🌀") {
+      if (!gotTrophy) {
+        log(
+          this.name +
+            " must acquire a trophy before being able to use the warp gate",
+          "red"
+        );
+      } else {
+        log(this.name + " steps through the warp gate...", "white");
+        this.win();
+      }
+    }
     if (this.ground === "🏆") {
-      this.win();
+      log(this.name + " gets a trophy! The ultimate reward!", "gold");
+      score += dungeonLevel * 100;
+      if (!gotTrophy) {
+        log(
+          this.name +
+            " can now escape the dungeon through a warp gate to become a true champion, or delve deeper and more greedily!",
+          "white"
+        );
+        gotTrophy = true;
+      }
       return true;
     }
     if (this.ground === "🕳️") {
@@ -1662,7 +1711,10 @@ function createPlayer() {
 }
 
 function populateItems(level = 1) {
-  for (var i = 0; i < 50; i++) {
+  var averageItems = 20 + (level - 1) * (30 / 199);
+  averageItems = Math.min(50, averageItems);
+  var itemsToPlace = Math.round(averageItems + (d6() - 3.5) * (10 / d6()));
+  for (var i = 0; i < itemsToPlace; i++) {
     var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
     var key = freeCells.splice(index, 1)[0];
     if (d6() === 6) {
@@ -1677,7 +1729,7 @@ function populateItems(level = 1) {
 }
 
 function populateHoles(level = 1) {
-  for (var i = 0; i < 5; i++) {
+  for (var i = 0; i <= Math.max(1, 6 - Math.floor((level - 1) / 10)); i++) {
     var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
     var key = freeCells.splice(index, 1)[0];
     var parts = key.split(",");
@@ -1706,6 +1758,15 @@ function populateHoles(level = 1) {
   }
 }
 
+function placeGate() {
+  var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
+  var key = freeCells.splice(index, 1)[0];
+  var parts = key.split(",");
+  var x = parseInt(parts[0]);
+  var y = parseInt(parts[1]);
+  generatedMap[key] = "🌀";
+}
+
 function placeTrophy() {
   var index = Math.floor(ROT.RNG.getUniform() * freeCells.length);
   var key = freeCells.splice(index, 1)[0];
@@ -1732,8 +1793,11 @@ function placeTrophy() {
       guardianCells.push(freeCells.splice(adjacentIndex, 1));
     }
   });
-  const guardian = createBeing(Dragon, true, guardianCells);
-  scheduler.add(guardian, true);
+  const numberOfDragons = 1 + Math.floor(dungeonLevel / 100);
+  for (let i = 0; i < numberOfDragons; i++) {
+    const guardian = createBeing(Dragon, true, guardianCells);
+    scheduler.add(guardian, true);
+  }
 }
 
 function initializeGame() {
@@ -1783,13 +1847,14 @@ function createBeing(what = undefined, guardian = false, guardianCells = []) {
         return null;
     }
   } else {
-    var index = Math.floor(ROT.RNG.getUniform() * guardianCells.length);
-    var key = guardianCells.splice(index, 1)[0];
-    var parts = key[0].split(",");
-    var x = parseInt(parts[0]);
-    var y = parseInt(parts[1]);
-    // Adjust this part if you want to use the roll logic for guardians as well
-    return new what(x, y);
+    if (guardianCells.length > 0) {
+      var index = Math.floor(ROT.RNG.getUniform() * guardianCells.length);
+      var key = guardianCells.splice(index, 1)[0];
+      var parts = key[0].split(",");
+      var x = parseInt(parts[0]);
+      var y = parseInt(parts[1]);
+      return new what(x, y);
+    }
   }
 }
 
@@ -1799,17 +1864,14 @@ function App() {
   const [dungeon, setDungeon] = useState({}); // Initialize dungeon state
   const [gameStarted, setGameStarted] = useState(false);
   const [animalSelected, setAnimalSelected] = useState(false);
+  const [playerName, setPlayerName] = useState(""); // New state for player's name
+  const [nameSubmitted, setNameSubmitted] = useState(false); // New state to check if name is submitted
 
   const startGame = () => {
     setGameStarted(true);
   };
 
   const selectAnimal = () => {
-    initializeGame();
-    log("Game started!", "#32CD32");
-    player.inventory.push(
-      Object.keys(eatFruit).find((key) => eatFruit[key] === healing)
-    );
     setAnimalSelected(true);
   };
 
@@ -1818,7 +1880,7 @@ function App() {
       return (
         <div className="startScreen">
           <h1>Beasts of Labyrinth Tactics (BoLT)</h1>
-          <p className="versionInfo">Version 1.5.0 Alpha</p>
+          <p className="versionInfo">Version 1.5.1 Alpha</p>
           <button onClick={startGame}>Game Start</button>
           <p>ATTRIBUTION CREDITS: Enter Command font is made by jeti</p>
           <Leaderboard />
@@ -1831,7 +1893,7 @@ function App() {
   const Leaderboard = React.memo(() => {
     return (
       <div className="leaderboard">
-        <h2>Leaderboard</h2>
+        <h2>Hall of Champions</h2>
         <ol>
           {leaderboardEntries.map((entry, index) => (
             <li key={index}>
@@ -2119,6 +2181,38 @@ function App() {
     );
   }
 
+  const submitName = () => {
+    // Function to handle name submission and start the game
+    initializeGame(); // Assuming initializeGame is a function that sets up the game
+    log("Game started!", "#32CD32");
+    player.inventory.push(
+      Object.keys(eatFruit).find((key) => eatFruit[key] === healing)
+    );
+    if (playerName.length > 0) {
+      player.name = playerName;
+    }
+    setNameSubmitted(true); // Set nameSubmitted to true to start the game
+  };
+
+  const renderNameInputScreen = () => {
+    if (animalSelected && !nameSubmitted) {
+      return (
+        <div className="nameInputScreen">
+          <h2>Enter Your Name</h2>
+          <input
+            type="text"
+            maxLength="6"
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
+            placeholder="Name"
+          />
+          <button onClick={submitName}>Submit</button>
+        </div>
+      );
+    }
+    return null;
+  };
+
   function renderScorekeep() {
     return (
       <div
@@ -2168,7 +2262,11 @@ function App() {
     <div className="App">
       {renderStartScreen()}
       {gameStarted && !animalSelected && renderAnimalSelectionScreen()}
-      {gameStarted && animalSelected ? renderGame() : null}
+      {gameStarted &&
+        animalSelected &&
+        !nameSubmitted &&
+        renderNameInputScreen()}
+      {gameStarted && animalSelected && nameSubmitted ? renderGame() : null}
     </div>
   );
 }
