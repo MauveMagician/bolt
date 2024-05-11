@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import * as ROT from "rot-js";
 import "./App.css";
+import app from "./firebaseConfig";
+import { getFirestore, collection, addDoc } from "firebase/firestore";
+import { getDocs, orderBy, limit, query } from "firebase/firestore";
 
 let player = null;
 let engine = null;
@@ -15,10 +18,16 @@ let TO_LEVEL_2 = 4;
 let TO_LEVEL_3 = 8;
 let TO_LEVEL_4 = 16;
 let selectedAnimal = "🐶";
+const db = getFirestore(app);
 const ASCEND_LEVEL = 16;
 const LIVES_CAP = 6;
 const generatedMap = {};
 let freeCells = [];
+const scoringSequence = [
+  100, 200, 400, 500, 800, 1000, 2000, 4000, 5000, 8000, 10000,
+];
+let killStreak = 0;
+let score = 0;
 const enemies = [];
 const eatFruit = {};
 const logContents = [];
@@ -91,6 +100,20 @@ const weapons = [
   "🥊", // Glove
 ];
 
+const addScoreToLeaderboard = async (playerName, score) => {
+  try {
+    const docRef = await addDoc(collection(db, "leaderboard"), {
+      name: playerName,
+      champion: selectedAnimal,
+      score: score,
+      timestamp: new Date(),
+    });
+    console.log("Document written with ID: ", docRef.id);
+  } catch (e) {
+    console.error("Error adding document: ", e);
+  }
+};
+
 class Enemy {
   constructor(
     x,
@@ -107,7 +130,6 @@ class Enemy {
     this._emoji = emoji;
     this.lives = maxLives;
     this.maxLives = maxLives;
-    this.score = 0;
     this.name = name;
     this.toHit = toHit;
     this._draw();
@@ -249,6 +271,8 @@ class Enemy {
   die() {
     scheduler.remove(this);
     enemies.splice(enemies.indexOf(this), 1);
+    score += scoringSequence[Math.min(killStreak, scoringSequence.length - 1)];
+    killStreak += 1;
     if (this.ground === "⬛️") {
       generatedMap[this._x + "," + this._y] = "🦴";
     } else {
@@ -445,6 +469,7 @@ const dungeonEnemies = [Goblin, GridBug, Ogre];
 
 function nextLevel() {
   dungeonLevel += 1;
+  score += 1000;
   freeCells.length = 0;
   player.ground = "⬛️";
   enemies.forEach((enemy) => {
@@ -866,7 +891,6 @@ class Player {
     this._emoji = emoji;
     this.lives = maxLives;
     this.maxLives = maxLives;
-    this.score = 0;
     this.name = name;
     this.toHit = toHit;
     this.ground = "⬛️";
@@ -1049,10 +1073,12 @@ class Player {
     }
     engine.lock();
     log("Game over!", "#FF1493");
+    addScoreToLeaderboard(this.name, score);
   }
 
   win() {
     engine.lock();
+    score += dungeonLevel * 1000;
     log(
       this.name + " takes the trophy and finally becomes a true champion!",
       "white"
@@ -1063,6 +1089,7 @@ class Player {
         " have defeated the Labyrinth together! You win!",
       "gold"
     );
+    addScoreToLeaderboard(this.name, score);
   }
 
   useGround() {
@@ -1207,6 +1234,7 @@ class Player {
       this.combat_timer -= 1;
       if (this.combat_timer <= 0) {
         this.incombat = false;
+        killStreak = 0;
       }
     }
     for (let key in this.tempEffects) {
@@ -1791,14 +1819,34 @@ function App() {
       return (
         <div className="startScreen">
           <h1>Beasts of Labyrinth Tactics (BoLT)</h1>
-          <p className="versionInfo">Version 1.0.0 Alpha</p>
+          <p className="versionInfo">Version 1.5.0 Alpha</p>
           <button onClick={startGame}>Game Start</button>
           <p>ATTRIBUTION CREDITS: Enter Command font is made by jeti</p>
+          <Leaderboard />
         </div>
       );
     }
     return null; // Return null if game has started
   };
+
+  const Leaderboard = React.memo(() => {
+    return (
+      <div className="leaderboard">
+        <h2>Leaderboard</h2>
+        <ol>
+          {leaderboardEntries.map((entry, index) => (
+            <li key={index}>
+              {entry.name} -{" "}
+              <span style={{ fontFamily: "Noto Color Emoji" }}>
+                {entry.champion}
+              </span>{" "}
+              - {entry.score} - {entry.timestamp.toDate().toLocaleString()}
+            </li>
+          ))}
+        </ol>
+      </div>
+    );
+  });
 
   const renderAnimalSelectionScreen = () => {
     const animalInfo = (animal) => {
@@ -2072,7 +2120,16 @@ function App() {
     );
   }
 
-  function renderScorkeep() {}
+  function renderScorekeep() {
+    return (
+      <div
+        className="scorekeep"
+        title="Scorekeep. Your champion's current score is shown here."
+      >
+        {score}
+      </div>
+    );
+  }
 
   const renderLog = () => {
     return (
@@ -2100,7 +2157,7 @@ function App() {
             {renderInventoryView()}
             {renderGroundView()}
             {renderFloorView()}
-            {renderScorkeep()}
+            {renderScorekeep()}
           </div>
           {renderLog()}
         </div>
@@ -2116,6 +2173,21 @@ function App() {
     </div>
   );
 }
+
+let leaderboardEntries = [];
+
+async function fetchLeaderboard() {
+  const leaderboardRef = collection(db, "leaderboard");
+  const q = query(leaderboardRef, orderBy("score", "desc"), limit(30)); // Construct the query with orderBy
+  const querySnapshot = await getDocs(q);
+  const entries = [];
+  querySnapshot.forEach((doc) => {
+    entries.push(doc.data());
+  });
+  leaderboardEntries = entries;
+}
+
+fetchLeaderboard();
 
 //STARTING GAME
 export default App;
