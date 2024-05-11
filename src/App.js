@@ -1589,7 +1589,7 @@ function createPlayer() {
       player = new Player(x, y);
       break;
     case "🐱":
-      player = new Player(x, y, "🐱", 2, "Mimi", 2, [], new Set(), 3, 5, 0, [
+      player = new Player(x, y, "🐱", 2, "Mimi", 2, [], new Set(), 3, 7, 0, [
         "Pounce",
         "Luck mastery",
         "Many lives",
