@@ -23,6 +23,7 @@ const db = getFirestore(app);
 const ASCEND_LEVEL = 16;
 const LIVES_CAP = 6;
 const LUCK_CAP = 16;
+const COMBAT_TIME = 12;
 const generatedMap = {};
 let freeCells = [];
 const scoringSequence = [
@@ -101,7 +102,6 @@ const weapons = [
   "🛡️", // Shield
   "🥊", // Glove
 ];
-
 const addScoreToLeaderboard = async (playerName, score) => {
   try {
     const docRef = await addDoc(collection(db, "leaderboard"), {
@@ -115,6 +115,52 @@ const addScoreToLeaderboard = async (playerName, score) => {
     console.error("Error adding document: ", e);
   }
 };
+
+function attackCalculation(attacker, defender) {
+  let rollValue = d6();
+  if (
+    attacker.passives.has("TwoWeapon") ||
+    attacker.passives.has("Weak") ||
+    attacker.passives.has("Innacuracy") ||
+    defender.passives.has("Great Defense")
+  ) {
+    rollValue = Math.min(d6(), d6());
+  }
+  if (attacker.passives.has("PlusOne") || attacker.passives.has("Keen Eyes")) {
+    rollValue += 1;
+  }
+  if (
+    attacker.passives.has("Luck mastery") &&
+    (rollValue === defender.toHit - 2 || rollValue === 4) &&
+    attacker.luck > 0
+  ) {
+    log("Very lucky!", "#00FF00");
+    attacker.luck -= 1;
+    rollValue += 2;
+  } else if (
+    (rollValue === defender.toHit - 1 || rollValue === 5) &&
+    attacker.luck > 0
+  ) {
+    log("Lucky!", "#00FF00");
+    attacker.luck -= 1;
+    rollValue += 1;
+  }
+  return rollValue;
+}
+
+function damageCalculation(attacker, defender) {
+  let might = 1;
+  if (attacker.passives.has("TwoWeapon")) might++;
+  if (attacker.passives.has("Mighty strikes")) might++;
+  if (defender.passives.has("Soft skin")) might++;
+  if (defender.passives.has("Thick Skin")) might = Math.max(might - 1, 1);
+  if (attacker.passives.has("Mighty")) might *= 2;
+  if (attacker.passives.has("Weak")) might = Math.ceil(might / 2);
+  let damage = Math.log2(might + 1);
+  damage = Math.ceil(damage);
+  damage = Math.min(damage, 6);
+  return damage;
+}
 
 class Enemy {
   constructor(
@@ -161,62 +207,16 @@ class Enemy {
       log(this.name + " shrugs off " + attacker.name + "'s attack", "#B0C4DE");
       return;
     }
-    let rollValue = d6();
-    if (
-      attacker.passives.has("TwoWeapon") ||
-      attacker.passives.has("Weak") ||
-      attacker.passives.has("Innacuracy")
-    ) {
-      rollValue = Math.min(d6(), d6());
-    }
-    if (this.passives.has("Thick Skin")) {
-      rollValue -= 1;
-    }
-    if (
-      attacker.passives.has("PlusOne") ||
-      attacker.passives.has("Keen Eyes") ||
-      this.passives.has("Soft skin")
-    ) {
-      rollValue += 1;
-    }
-    if (
-      attacker.passives.has("Luck mastery") &&
-      (rollValue === this.toHit - 2 || rollValue === 4) &&
-      attacker.luck > 0
-    ) {
-      log("Very lucky!", "#00FF00");
-      attacker.luck -= 1;
-      rollValue += 2;
-    } else if (
-      (rollValue === this.toHit - 1 || rollValue === 5) &&
-      attacker.luck > 0
-    ) {
-      log("Lucky!", "#00FF00");
-      attacker.luck -= 1;
-      rollValue += 1;
-    }
+    let rollValue = attackCalculation(attacker, this);
     if (rollValue >= this.toHit) {
-      if (
-        (attacker.passives.has("Mighty") ||
-          attacker.passives.has("TwoWeapon") ||
-          attacker.passives.has("Mighty strikes")) &&
-        !attacker.passives.has("Weak")
-      ) {
-        this.lives -= 2;
-      } else {
-        this.lives -= 1;
-      }
+      const damage = damageCalculation(attacker, this);
+      this.lives -= damage;
       if (this.lives <= 0) {
         log(attacker.name + " slays the " + this.name + "!", "#FFD700");
         this.die();
-      } else if (
-        (attacker.passives.has("Mighty") ||
-          attacker.passives.has("TwoWeapon") ||
-          attacker.passives.has("Mighty strikes")) &&
-        !attacker.passives.has("Weak")
-      ) {
+      } else if (damage >= 2) {
         log(
-          attacker.name + " deals a mighty blow to the " + this.name + "!",
+          `${attacker.name} deals ${damage} damage to the ${this.name}!`,
           "#E5DE00"
         );
       } else {
@@ -224,10 +224,7 @@ class Enemy {
       }
     } else {
       log(attacker.name + " misses the " + this.name + "!", "#F0E68C");
-      attacker.luck += 1;
-      if (attacker.luck > attacker.maxLuck) {
-        attacker.luck = attacker.maxLuck;
-      }
+      attacker.luck = Math.min(attacker.luck + 1, attacker.maxLuck);
     }
     if (rollValue >= 6) {
       log("Critical hit!", "#FFD700");
@@ -366,7 +363,7 @@ class Enemy {
     for (let key in this.tempEffects) {
       this.tempEffects[key] -= 1;
       if (this.tempEffects[key] <= 0) {
-        if (key === "Hasted" || key === "Slowed") {
+        if (key == "Hasted" || key == "Slowed") {
           this.speed = this.defaultSpeed;
         }
         delete this.tempEffects[key];
@@ -621,7 +618,7 @@ function healing(eater, value = 2) {
   }
   log(eater.name + " feels better!", "#7FFF00");
 }
-function extraHealing(eater) {
+function extraHealing(eater, value = 4) {
   if (
     eater.lives >= eater.maxLives &&
     eater.maxLives < LIVES_CAP &&
@@ -631,7 +628,7 @@ function extraHealing(eater) {
     eater.maxLives += 1;
     log(eater.name + " feels tougher!", "#7FFF00");
   } else {
-    eater.lives += 4;
+    eater.lives += value;
     if (eater.lives > eater.maxLives) {
       eater.lives = eater.maxLives;
     }
@@ -1013,53 +1010,32 @@ class Player {
 
   beHit(enemy) {
     this.incombat = true;
-    this.combat_timer = 6;
+    this.combat_timer = COMBAT_TIME;
     if (this.passives.has("Invulnerable")) {
       log(this.name + " shrugs off the " + enemy.name + "'s attack", "#B0C4DE");
       return;
     }
-    let rollValue = d6();
-    if (
-      enemy.passives.has("TwoWeapon") ||
-      enemy.passives.has("Weak") ||
-      enemy.passives.has("Innacuracy") ||
-      this.passives.has("Great defense")
-    ) {
-      rollValue = Math.min(d6(), d6());
-    }
-    if (
-      enemy.passives.has("Lucky") ||
-      enemy.passives.has("Keen Eyes") ||
-      this.passives.has("Soft Skin")
-    ) {
-      rollValue += 1;
-    }
-    if (this.passives.has("Thick Skin")) {
-      rollValue -= 1;
-    }
+    let rollValue = attackCalculation(enemy, this);
     this.beasthoodUp(1);
     if (rollValue >= this.toHit) {
-      if (
-        enemy.passives.has("Mighty") ||
-        enemy.passives.has("Mighty strikes")
-      ) {
-        this.lives -= 2;
+      const damage = damageCalculation(enemy, this);
+      this.lives -= damage;
+      if (damage >= 2) {
         log(
-          "The " + enemy.name + " hits " + this.name + " with a mighty blow!",
-          "red"
+          `The ${enemy.name} deals ${damage} damage to ${this.name}!`,
+          "#E5DE00"
         );
       } else {
-        this.lives -= 1;
-        log("The " + enemy.name + " hits " + this.name + "!", "red");
+        log("The " + enemy.name + " hits " + this.name + "!", "#E5DE00");
       }
       if (this.lives == 1) {
-        log(this.name + " is on their last breath!", "#8B0000");
+        log(`${this.name} is on their last breath!`, "#8B0000");
       }
       if (this.lives <= 0) {
         this.die();
       }
       if (enemy.passives.has("Blood draining")) {
-        log(enemy.name + " drains " + this.name + "'s blood!", "red");
+        log(`${enemy.name} drains ${this.name}'s blood!`, "red");
         healing(enemy, 1);
       }
       document.querySelector(".App").classList.add("shake");
@@ -1073,7 +1049,7 @@ class Player {
 
   burn() {
     this.incombat = true;
-    this.combat_timer = 6;
+    this.combat_timer = COMBAT_TIME;
     document.querySelector(".App").classList.add("shake");
     setTimeout(() => {
       document.querySelector(".App").classList.remove("shake");
@@ -1595,6 +1571,9 @@ class Player {
           if (enemy.x === pounce_x && enemy.y === pounce_y && enemy.lives > 0) {
             log(this.name + " pounces on the " + enemy.name + "!", "gold");
             player.attack(enemy);
+            if (enemy.lives > 0) {
+              player.attack(enemy);
+            }
           }
         });
       }
@@ -1615,7 +1594,7 @@ class Player {
       }
     }
     this.incombat = true;
-    this.combat_timer = 6;
+    this.combat_timer = COMBAT_TIME;
     this.beasthoodUp(1);
     enemy.beHit(player);
   }
