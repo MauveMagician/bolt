@@ -1136,6 +1136,7 @@ class Player {
     if (this.ground === "🏆") {
       log(this.name + " gets a trophy! The ultimate reward!", "gold");
       score += dungeonLevel * 100;
+      this.ground = "⬛️";
       if (!gotTrophy) {
         log(
           this.name +
