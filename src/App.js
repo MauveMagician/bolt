@@ -9,6 +9,7 @@ let player = null;
 let engine = null;
 let scheduler = null;
 let throwing = false;
+let dashing = false;
 let gotTrophy = false;
 let throwingIndex = undefined;
 let dungeonLevel = 1;
@@ -118,32 +119,43 @@ const addScoreToLeaderboard = async (playerName, score) => {
 
 function attackCalculation(attacker, defender) {
   let rollValue = d6();
-  if (
-    attacker.passives.has("TwoWeapon") ||
-    attacker.passives.has("Weak") ||
-    attacker.passives.has("Innacuracy") ||
-    defender.passives.has("Great Defense")
-  ) {
-    rollValue = Math.min(d6(), d6());
+  const disadvantageSources = [
+    attacker.passives.has("TwoWeapon"),
+    attacker.passives.has("Weak"),
+    attacker.passives.has("Innacuracy"),
+    defender.passives.has("Great defense"),
+  ].filter(Boolean).length;
+
+  const advantageSources = [attacker.passives.has("Keen Eyes")].filter(
+    Boolean
+  ).length;
+
+  if (disadvantageSources > advantageSources) {
+    rollValue = Math.min(d6(), d6()); // More sources of disadvantage
+  } else if (advantageSources > disadvantageSources) {
+    rollValue = Math.max(d6(), d6()); // More sources of advantage
   }
-  if (attacker.passives.has("PlusOne") || attacker.passives.has("Keen Eyes")) {
+
+  if (attacker.passives.has("PlusOne")) {
     rollValue += 1;
   }
-  if (
-    attacker.passives.has("Luck mastery") &&
-    (rollValue === defender.toHit - 2 || rollValue === 4) &&
-    attacker.luck > 0
-  ) {
-    log("Very lucky!", "#00FF00");
-    attacker.luck -= 1;
-    rollValue += 2;
-  } else if (
-    (rollValue === defender.toHit - 1 || rollValue === 5) &&
-    attacker.luck > 0
-  ) {
-    log("Lucky!", "#00FF00");
-    attacker.luck -= 1;
-    rollValue += 1;
+
+  // Check for luck-based adjustments only if the attacker has a luck property
+  if (typeof attacker.luck !== "undefined" && attacker.luck > 0) {
+    const isVeryLucky =
+      attacker.passives.has("Luck mastery") &&
+      (rollValue === defender.toHit - 2 || rollValue === 4);
+    const isLucky =
+      !isVeryLucky && (rollValue === defender.toHit - 1 || rollValue === 5);
+    if (isVeryLucky) {
+      log("Very lucky!", "#00FF00");
+      attacker.luck -= 1;
+      rollValue += 2;
+    } else if (isLucky) {
+      log("Lucky!", "#00FF00");
+      attacker.luck -= 1;
+      rollValue += 1;
+    }
   }
   return rollValue;
 }
@@ -636,6 +648,16 @@ function extraHealing(eater, value = 4) {
   }
 }
 function poison(eater) {
+  if (eater.passives.has("Coat quills")) {
+    eater.passives.add("Poison quills");
+    const duration = 6;
+    eater.tempEffects["Poison quills"] = duration;
+    log(
+      eater.name + "'s quills are coated in poison for " + duration + " turns!",
+      "brown"
+    );
+    return;
+  }
   if (eater.lives == 1) {
     log(eater.name + " is slain by poison!", "#FF0000");
     eater.lives = 0;
@@ -672,6 +694,19 @@ function might(eater) {
   log(eater.name + " is powerful for " + duration + " turns!", "#00BFFF");
 }
 function confusion(eater) {
+  if (eater.passives.has("Coat quills")) {
+    eater.passives.add("Confusing quills");
+    const duration = 6;
+    eater.tempEffects["Confusing quills"] = duration;
+    log(
+      eater.name +
+        "'s quills are coated in a confusing toxin for " +
+        duration +
+        " turns!",
+      "brown"
+    );
+    return;
+  }
   eater.passives.add("Confused");
   const duration = d6() + 6;
   eater.tempEffects["Confused"] = duration;
@@ -777,6 +812,19 @@ function mutation(eater) {
   }
 }
 function slowing(eater) {
+  if (eater.passives.has("Coat quills")) {
+    eater.passives.add("Slowing quills");
+    const duration = 6;
+    eater.tempEffects["Slowing quills"] = duration;
+    log(
+      eater.name +
+        "'s quills are coated in a slowing toxin for " +
+        duration +
+        " turns!",
+      "brown"
+    );
+    return;
+  }
   if (eater.passives.has("Slowed")) {
     log(eater.name + " can't get any slower!", "#00FFFF");
     return;
@@ -1036,7 +1084,7 @@ class Player {
       }
       if (enemy.passives.has("Blood draining")) {
         log(`${enemy.name} drains ${this.name}'s blood!`, "red");
-        healing(enemy, 1);
+        extraHealing(enemy, 1);
       }
       document.querySelector(".App").classList.add("shake");
       setTimeout(() => {
@@ -1044,6 +1092,18 @@ class Player {
       }, 200);
     } else {
       log("The " + enemy.name + " misses " + this.name + "!", "#FFA500");
+    }
+    if (this.passives.has("Prickly") && d6() > 3) {
+      log("The " + enemy.name + " is pricked!", "brown");
+      if (enemy.lives > 0) {
+        enemy.lives -= 1;
+        if (this.passives.has("Poison quills")) poison(enemy);
+        if (this.passives.has("Confusing quills")) confusion(enemy);
+        if (this.passives.has("Slowing quills")) slowing(enemy);
+        if (enemy.lives <= 0) {
+          enemy.die();
+        }
+      }
     }
   }
 
@@ -1312,7 +1372,8 @@ class Player {
     if (
       this.passives.has("Sapper") ||
       this.passives.has("Appraise") ||
-      this.passives.has("Ultrasonic Blast")
+      this.passives.has("Ultrasonic blast") ||
+      this.passives.has("Spin dash")
     ) {
       keyMap[82] = 8;
     }
@@ -1343,7 +1404,7 @@ class Player {
     }
     if (code === 82) {
       let action = false;
-      if (this.passives.has("Ultrasonic Blast")) {
+      if (this.passives.has("Ultrasonic blast")) {
         log(this.name + " lets loose an ultrasonic blast!", "gold");
         enemies.forEach((enemy) => {
           if (
@@ -1355,6 +1416,11 @@ class Player {
           }
         });
         this.beasthoodDown(3);
+        action = true;
+      }
+      if (this.passives.has("Spin dash")) {
+        log(this.name + " spins in place!", "gold");
+        dashing = true;
         action = true;
       }
       if (this.passives.has("Sapper") && this.ground === "⬛️") {
@@ -1378,7 +1444,6 @@ class Player {
               "!",
             "gold"
           );
-          this.beasthoodDown(2);
           action = true;
         } else {
           log(this.name + " has nothing to appraise", "#F0E68C");
@@ -1525,6 +1590,13 @@ class Player {
       engine.unlock();
       return;
     }
+    if (dashing) {
+      this.dash(keyMap[code]);
+      dashing = false;
+      window.removeEventListener("keydown", this);
+      engine.unlock();
+      return;
+    }
     const newKey = newX + "," + newY;
 
     if (generatedMap[newKey] === "🟫") {
@@ -1597,6 +1669,48 @@ class Player {
     this.combat_timer = COMBAT_TIME;
     this.beasthoodUp(1);
     enemy.beHit(player);
+  }
+
+  dash(direction) {
+    let newX = this._x + ROT.DIRS[8][direction][0];
+    let newY = this._y + ROT.DIRS[8][direction][1];
+    let newKey = newX + "," + newY;
+    let hitWall = generatedMap[newKey] === "🟫";
+    let hitEnemy = enemies.some(
+      (enemy) => enemy.x === newX && enemy.y === newY && enemy.lives > 0
+    );
+
+    // Continue dashing until a wall or an enemy is encountered
+    while (!hitWall && !hitEnemy) {
+      // Update the character's position
+      generatedMap[this._x + "," + this._y] = this.ground;
+      this.ground = generatedMap[newX + "," + newY];
+      this._x = newX;
+      this._y = newY;
+
+      // Prepare for the next iteration
+      newX += ROT.DIRS[8][direction][0];
+      newY += ROT.DIRS[8][direction][1];
+      newKey = newX + "," + newY;
+      hitWall = generatedMap[newKey] === "🟫";
+      hitEnemy = enemies.some(
+        (enemy) => enemy.x === newX && enemy.y === newY && enemy.lives > 0
+      );
+    }
+
+    // If an enemy is hit, attack
+    if (hitEnemy) {
+      const enemy = enemies.find(
+        (enemy) => enemy.x === newX && enemy.y === newY
+      );
+      log(this.name + " dashes into " + enemy.name + " and attacks!", "gold");
+      this.attack(enemy);
+    } else if (hitWall) {
+      log(this.name + " crashes into a wall!", "#EE82EE");
+    }
+
+    // Update the character's position on the map
+    this._draw();
   }
 
   throwFruit(fruit, direction, x = this._x, y = this._y, remove = true) {
@@ -1681,7 +1795,23 @@ function createPlayer() {
         2,
         4,
         0,
-        ["Mighty strikes", "Great defense", "Ultrasonic Blast"]
+        ["Mighty strikes", "Great defense", "Ultrasonic blast"]
+      );
+      break;
+    case "🦔":
+      player = new Player(
+        x,
+        y,
+        "🦔",
+        2,
+        "Dorian",
+        4,
+        [],
+        new Set(["Prickly"]),
+        3,
+        3,
+        0,
+        ["Great defense", "Coat quills", "Spin dash"]
       );
       break;
     default:
@@ -1900,6 +2030,8 @@ function App() {
           return "Raccoon - Clever and resourceful, with a knack for finding items.";
         case "🐋":
           return "Whale - Powerful and resilient, with aquatic abilities.";
+        case "🦔":
+          return "Hedgehog - Quick and prickly, with the ability to counter attacks.";
         default:
           return "";
       }
@@ -1948,6 +2080,16 @@ function App() {
           >
             🐋
             <div className="animalInfo">{animalInfo("🐋")}</div>
+          </div>
+          <div
+            className="animalGridItem"
+            onClick={() => {
+              selectedAnimal = "🦔";
+              selectAnimal();
+            }}
+          >
+            🦔
+            <div className="animalInfo">{animalInfo("🦔")}</div>
           </div>
         </div>
       </div>
@@ -2168,6 +2310,7 @@ function App() {
     player.inventory.push(
       Object.keys(eatFruit).find((key) => eatFruit[key] === healing)
     );
+    beasthood(player);
     if (playerName.length > 0) {
       player.name = playerName;
     }
