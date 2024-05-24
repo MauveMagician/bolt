@@ -1,17 +1,17 @@
 {
   "files": {
     "main.css": "/bolt/static/css/main.738e439f.css",
-    "main.js": "/bolt/static/js/main.de1e611b.js",
+    "main.js": "/bolt/static/js/main.86222bff.js",
     "static/js/453.f5086a61.chunk.js": "/bolt/static/js/453.f5086a61.chunk.js",
     "static/media/NotoColorEmoji-Regular.ttf": "/bolt/static/media/NotoColorEmoji-Regular.e9859b48089358cdc923.ttf",
     "static/media/EnterCommand-Bold.ttf": "/bolt/static/media/EnterCommand-Bold.99b5f931105e303862ed.ttf",
     "index.html": "/bolt/index.html",
     "main.738e439f.css.map": "/bolt/static/css/main.738e439f.css.map",
-    "main.de1e611b.js.map": "/bolt/static/js/main.de1e611b.js.map",
+    "main.86222bff.js.map": "/bolt/static/js/main.86222bff.js.map",
     "453.f5086a61.chunk.js.map": "/bolt/static/js/453.f5086a61.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.738e439f.css",
-    "static/js/main.de1e611b.js"
+    "static/js/main.86222bff.js"
   ]
 }
