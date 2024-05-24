@@ -20,6 +20,7 @@ let TO_LEVEL_2 = 4;
 let TO_LEVEL_3 = 8;
 let TO_LEVEL_4 = 16;
 let selectedAnimal = "🐶";
+let won = false;
 const db = getFirestore(app);
 const ASCEND_LEVEL = 16;
 const LIVES_CAP = 6;
@@ -1140,20 +1141,23 @@ class Player {
   }
 
   win() {
-    engine.lock();
-    score += dungeonLevel * 1000;
-    log(
-      this.name +
-        " takes the treasure home and finally becomes a true champion!",
-      "white"
-    );
-    log(
-      "Congratulations! You and " +
+    if (!won) {
+      engine.lock();
+      score += dungeonLevel * 1000;
+      log(
         this.name +
-        " have defeated the Labyrinth together! You win!",
-      "gold"
-    );
-    addScoreToLeaderboard(this.name, score);
+          " takes the treasure home and finally becomes a true champion!",
+        "white"
+      );
+      log(
+        "Congratulations! You and " +
+          this.name +
+          " have defeated the Labyrinth together! You win!",
+        "gold"
+      );
+      addScoreToLeaderboard(this.name, score);
+      won = true;
+    }
   }
 
   useGround() {
