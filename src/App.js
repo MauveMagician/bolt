@@ -2314,7 +2314,6 @@ function App() {
     player.inventory.push(
       Object.keys(eatFruit).find((key) => eatFruit[key] === healing)
     );
-    beasthood(player);
     if (playerName.length > 0) {
       player.name = playerName;
     }
